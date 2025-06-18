@@ -1,0 +1,19 @@
+{
+    "name": "UnityBLE.macOS",
+    "rootNamespace": "UnityBLE",
+    "references": [
+        "GUID:03ed1174907564605841151bca10d40b"
+    ],
+    "includePlatforms": [
+        "Editor",
+        "macOSStandalone"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

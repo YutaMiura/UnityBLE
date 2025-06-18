@@ -1,0 +1,19 @@
+{
+    "name": "UnityBLE.Android",
+    "rootNamespace": "UnityBLE.Android",
+    "references": [
+        "GUID:03ed1174907564605841151bca10d40b"
+    ],
+    "includePlatforms": [
+        "Android",
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

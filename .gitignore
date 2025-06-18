@@ -1,0 +1,19 @@
+# Unity BLE UPM package .gitignore
+[Ll]ibrary/
+[Tt]emp/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+obj/
+*.userprefs
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userosscache
+*.sln.docstates
+.DS_Store
+.idea/
+.vscode/
