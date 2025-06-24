@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace UnityBLE
@@ -9,11 +10,11 @@ namespace UnityBLE
     public interface IBleService
     {
         string Uuid { get; }
-        IBleDevice Device { get; }
 
         /// <summary>
         /// Get the list of characteristics from this service.
         /// </summary>
-        Task<IReadOnlyList<IBleCharacteristic>> GetCharacteristicsAsync();
+        /// <param name="cancellationToken">Token to cancel the characteristics discovery operation</param>
+        Task<IReadOnlyList<IBleCharacteristic>> GetCharacteristicsAsync(CancellationToken cancellationToken = default);
     }
 }

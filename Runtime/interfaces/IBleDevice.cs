@@ -1,5 +1,5 @@
-using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace UnityBLE
@@ -12,19 +12,26 @@ namespace UnityBLE
         string Name { get; }
         string Address { get; }
 
+        public bool IsConnected { get; }
+
+        public IEnumerable<IBleService> Services { get; }
+
         /// <summary>
         /// Connect to this BLE device.
         /// </summary>
-        Task ConnectAsync();
+        /// <param name="cancellationToken">Token to cancel the connection operation</param>
+        Task ConnectAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Disconnect from this BLE device.
         /// </summary>
-        Task DisconnectAsync();
+        /// <param name="cancellationToken">Token to cancel the disconnection operation</param>
+        Task DisconnectAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Get the list of services from this device.
+        /// Get the array of services from this device.
         /// </summary>
-        Task<IReadOnlyList<IBleService>> GetServicesAsync();
+        /// <param name="cancellationToken">Token to cancel the service discovery operation</param>
+        Task<IReadOnlyList<IBleService>> GetServicesAsync(CancellationToken cancellationToken = default);
     }
 }

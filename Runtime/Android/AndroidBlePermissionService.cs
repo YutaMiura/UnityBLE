@@ -1,10 +1,17 @@
 using System.Threading.Tasks;
 
-namespace UnityBLE
+namespace UnityBLE.Android
 {
-    public static class AndroidPermissionService
+    public class AndroidBlePermissionService : IBlePermissionService
     {
-        public static async Task<bool> RequestBluetoothPermissions()
+        public bool ArePermissionsGranted()
+        {
+            var apiLevel = AndroidVersion.ApiLevel;
+            var permissions = BluetoothPermissions(apiLevel);
+            return HasAllPermissions(permissions);
+        }
+
+        public async Task<bool> RequestPermissionsAsync()
         {
             var apiLevel = AndroidVersion.ApiLevel;
 

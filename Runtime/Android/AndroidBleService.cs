@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -9,21 +10,39 @@ namespace UnityBLE
     /// </summary>
     public class AndroidBleService : IBleService
     {
-        private readonly string _uuid;
-        private readonly IBleDevice _device;
-        public string Uuid => _uuid;
-        public IBleDevice Device => _device;
+        public readonly string _uuid;
 
-        public AndroidBleService(string uuid, IBleDevice device)
+        public AndroidBleService(string uuid)
         {
             _uuid = uuid;
-            _device = device;
         }
 
-        public Task<IReadOnlyList<IBleCharacteristic>> GetCharacteristicsAsync()
+        public string Uuid => _uuid;
+
+        public Task<IReadOnlyList<IBleCharacteristic>> GetCharacteristicsAsync(CancellationToken cancellationToken = default)
         {
+            // Check for cancellation before starting
+            cancellationToken.ThrowIfCancellationRequested();
+
             // TODO: Implement Android-specific characteristic retrieval logic
-            return Task.FromResult<IReadOnlyList<IBleCharacteristic>>(new List<IBleCharacteristic>());
+            // For now, return empty list with proper cancellation support
+            var completionSource = new TaskCompletionSource<IReadOnlyList<IBleCharacteristic>>();
+
+            // Register cancellation callback
+            using var cancellationRegistration = cancellationToken.Register(() =>
+            {
+                Debug.Log($"Characteristic discovery for service {_uuid} was cancelled");
+                completionSource.TrySetCanceled();
+            });
+
+            // Simulate async operation and return empty list for now
+            completionSource.SetResult(new List<IBleCharacteristic>());
+            return completionSource.Task;
+        }
+
+        public override string ToString()
+        {
+            return $"AndroidBleService: {_uuid}";
         }
     }
 }
