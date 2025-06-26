@@ -1,0 +1,18 @@
+{
+    "name": "UnityBLE.iOS",
+    "rootNamespace": "UnityBLE.iOS",
+    "references": [
+        "GUID:7cef1a6603cce478282f5ca7b390479a"
+    ],
+    "includePlatforms": [
+        "iOS"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

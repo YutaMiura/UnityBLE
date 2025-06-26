@@ -1,7 +1,13 @@
 {
     "name": "UnityBLE",
     "rootNamespace": "",
-    "references": [],
+    "references": [
+        "GUID:7cef1a6603cce478282f5ca7b390479a",
+        "GUID:d80c1e6519f834b61890c979f48b84ed",
+        "GUID:8fba06c6a6b2347f7ac7983a1db694da",
+        "GUID:2d5831623ac0e48a6868e02e60750ab1",
+        "GUID:bdb5225a9ed89474b8a4cc8146b472b1"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

@@ -10,8 +10,6 @@ namespace UnityBLE
     public interface IBleCharacteristic
     {
         string Uuid { get; }
-        IBleService Service { get; }
-        // Add additional properties as needed
 
         /// <summary>
         /// Read data from this characteristic.
