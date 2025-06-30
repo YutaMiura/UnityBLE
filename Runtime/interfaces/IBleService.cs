@@ -11,6 +11,10 @@ namespace UnityBLE
     {
         string Uuid { get; }
 
+        string DeviceAddress { get; }
+
+        IEnumerable<IBleCharacteristic> Characteristics { get; }
+
         /// <summary>
         /// Get the list of characteristics from this service.
         /// </summary>

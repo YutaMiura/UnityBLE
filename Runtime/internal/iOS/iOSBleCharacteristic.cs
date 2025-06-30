@@ -3,6 +3,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityBLE;
 
 namespace UnityBLE.iOS
 {
@@ -16,33 +17,41 @@ namespace UnityBLE.iOS
         private readonly string _deviceAddress;
         private readonly string _serviceUuid;
         private byte[] _value;
-        private readonly bool _canRead;
-        private readonly bool _canWrite;
-        private readonly bool _canNotify;
+        private readonly CharacteristicProperties _properties;
+
+        private bool _isSubscribed;
+
+        // Command instances for reuse
+        private iOSReadCharacteristicCommand _readCommand;
+        private iOSWriteCharacteristicCommand _writeCommand;
+        private iOSSubscribeCharacteristicCommand _subscribeCommand;
+        private iOSUnsubscribeCharacteristicCommand _unsubscribeCommand;
 
         public string Name => _name;
         public string Uuid => _uuid;
         public byte[] Value => _value;
-        public bool CanRead => _canRead;
-        public bool CanWrite => _canWrite;
-        public bool CanNotify => _canNotify;
+        public CharacteristicProperties Properties => _properties;
+        public event Action<byte[]> OnDataReceived;
 
-        public iOSBleCharacteristic(string name, string uuid, string deviceAddress, string serviceUuid)
+        public iOSBleCharacteristic(string name, string uuid, string deviceAddress, string serviceUuid, CharacteristicProperties properties)
         {
             _name = name;
             _uuid = uuid;
             _deviceAddress = deviceAddress;
             _serviceUuid = serviceUuid;
             _value = new byte[0];
+            _properties = properties;
 
-            _canRead = true;
-            _canWrite = uuid.ToLower() != "00002a05-0000-1000-8000-00805f9b34fb"; // Service Changed is read-only
-            _canNotify = uuid.ToLower() == "00002a05-0000-1000-8000-00805f9b34fb"; // Service Changed can notify
+            // Initialize commands
+            _readCommand = new iOSReadCharacteristicCommand(_deviceAddress, _serviceUuid, _uuid);
+            _writeCommand = new iOSWriteCharacteristicCommand(_deviceAddress, _serviceUuid, _uuid);
+            _subscribeCommand = new iOSSubscribeCharacteristicCommand(_deviceAddress, _serviceUuid, _uuid);
+            _unsubscribeCommand = new iOSUnsubscribeCharacteristicCommand(_deviceAddress, _serviceUuid, _uuid);
         }
 
         public async Task<byte[]> ReadAsync(CancellationToken cancellationToken = default)
         {
-            if (!_canRead)
+            if (!Properties.CanRead())
             {
                 throw new InvalidOperationException($"Characteristic {_name} ({_uuid}) does not support reading");
             }
@@ -51,32 +60,7 @@ namespace UnityBLE.iOS
 
             try
             {
-                // Initialize native plugin if not already done
-                if (!iOSBleNativePlugin.Initialize())
-                {
-                    throw new InvalidOperationException("Failed to initialize iOS BLE native plugin");
-                }
-
-                // Call native read
-                if (!iOSBleNativePlugin.ReadCharacteristic(_deviceAddress, _serviceUuid, _uuid))
-                {
-                    throw new InvalidOperationException($"Failed to start reading characteristic {_uuid}");
-                }
-
-                // Wait for characteristic value callback (this would be handled through events in real implementation)
-                await Task.Delay(500, cancellationToken);
-
-                // For now, return mock data similar to macOS implementation
-                _value = _uuid.ToLower() switch
-                {
-                    "00002a00-0000-1000-8000-00805f9b34fb" => Encoding.UTF8.GetBytes("iOS Test Device"),
-                    "00002a01-0000-1000-8000-00805f9b34fb" => BitConverter.GetBytes((ushort)0x0080), // Generic Computer
-                    "00002a29-0000-1000-8000-00805f9b34fb" => Encoding.UTF8.GetBytes("Unity Technologies"),
-                    "00002a24-0000-1000-8000-00805f9b34fb" => Encoding.UTF8.GetBytes("UnityBLE iOS"),
-                    "00002a25-0000-1000-8000-00805f9b34fb" => Encoding.UTF8.GetBytes("SN001"),
-                    _ => Encoding.UTF8.GetBytes("iOS Mock Value")
-                };
-
+                _value = await _readCommand.ExecuteAsync(cancellationToken);
                 Debug.Log($"[iOS BLE] Read {_value.Length} bytes from characteristic {_name}");
                 return _value;
             }
@@ -89,7 +73,7 @@ namespace UnityBLE.iOS
 
         public async Task WriteAsync(byte[] data, CancellationToken cancellationToken = default)
         {
-            if (!_canWrite)
+            if (!Properties.CanWrite())
             {
                 throw new InvalidOperationException($"Characteristic {_name} ({_uuid}) does not support writing");
             }
@@ -98,24 +82,19 @@ namespace UnityBLE.iOS
 
             try
             {
-                // Initialize native plugin if not already done
-                if (!iOSBleNativePlugin.Initialize())
-                {
-                    throw new InvalidOperationException("Failed to initialize iOS BLE native plugin");
-                }
-
-                // Call native write
-                if (!iOSBleNativePlugin.WriteCharacteristic(_deviceAddress, _serviceUuid, _uuid, data))
-                {
-                    throw new InvalidOperationException($"Failed to write to characteristic {_uuid}");
-                }
-
-                await Task.Delay(300, cancellationToken);
+                await _writeCommand.ExecuteAsync(data, cancellationToken);
 
                 _value = new byte[data.Length];
                 Array.Copy(data, _value, data.Length);
 
                 Debug.Log($"[iOS BLE] Successfully wrote {data.Length} bytes to characteristic {_name}");
+
+                // If subscribed, simulate notification
+                if (_isSubscribed && Properties.CanNotify())
+                {
+                    OnDataReceived?.Invoke(_value);
+                    Debug.Log($"[iOS BLE] Sent notification for characteristic {_name}");
+                }
             }
             catch (Exception ex)
             {
@@ -126,7 +105,7 @@ namespace UnityBLE.iOS
 
         public Task StartNotificationsAsync(Action<byte[]> onNotification, CancellationToken cancellationToken = default)
         {
-            if (!_canNotify)
+            if (!Properties.CanNotify())
             {
                 throw new InvalidOperationException($"Characteristic {_name} ({_uuid}) does not support notifications");
             }
@@ -139,7 +118,7 @@ namespace UnityBLE.iOS
 
         public Task StopNotificationsAsync(CancellationToken cancellationToken = default)
         {
-            if (!_canNotify)
+            if (!Properties.CanNotify())
             {
                 throw new InvalidOperationException($"Characteristic {_name} ({_uuid}) does not support notifications");
             }
@@ -152,23 +131,66 @@ namespace UnityBLE.iOS
 
         public override string ToString()
         {
-            return $"iOSBleCharacteristic: {_name} ({_uuid}) R:{_canRead} W:{_canWrite} N:{_canNotify}";
+            return $"iOSBleCharacteristic: {_name} ({_uuid}) Properties: {_properties}";
         }
 
-        public Task WriteAsync(byte[] data, bool withResponse, CancellationToken cancellationToken = default)
+
+        public async Task SubscribeAsync(CancellationToken cancellationToken = default)
         {
-            // iOS Core Bluetooth automatically handles write type based on characteristic properties
-            return WriteAsync(data, cancellationToken);
+            if (!Properties.CanNotify())
+            {
+                throw new InvalidOperationException($"Characteristic {_name} ({_uuid}) does not support notifications");
+            }
+
+            if (_isSubscribed)
+            {
+                Debug.LogWarning($"[iOS BLE] Already subscribed to characteristic {_name}");
+                return;
+            }
+
+            Debug.Log($"[iOS BLE] Subscribing to notifications for characteristic {_name} ({_uuid})");
+
+            try
+            {
+                await _subscribeCommand.ExecuteAsync(OnDataReceived, cancellationToken);
+                _isSubscribed = true;
+
+                Debug.Log($"[iOS BLE] Successfully subscribed to characteristic {_name}");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[iOS BLE] Error subscribing to characteristic {_name}: {ex.Message}");
+                throw;
+            }
         }
 
-        public Task SubscribeAsync(Action<byte[]> onValueChanged, CancellationToken cancellationToken = default)
+        public async Task UnsubscribeAsync(CancellationToken cancellationToken = default)
         {
-            return StartNotificationsAsync(onValueChanged, cancellationToken);
-        }
+            if (!Properties.CanNotify())
+            {
+                throw new InvalidOperationException($"Characteristic {_name} ({_uuid}) does not support notifications");
+            }
 
-        public Task UnsubscribeAsync(CancellationToken cancellationToken = default)
-        {
-            return StopNotificationsAsync(cancellationToken);
+            if (!_isSubscribed)
+            {
+                Debug.LogWarning($"[iOS BLE] Not subscribed to characteristic {_name}");
+                return;
+            }
+
+            Debug.Log($"[iOS BLE] Unsubscribing from notifications for characteristic {_name} ({_uuid})");
+
+            try
+            {
+                await _unsubscribeCommand.ExecuteAsync(cancellationToken);
+                _isSubscribed = false;
+
+                Debug.Log($"[iOS BLE] Successfully unsubscribed from characteristic {_name}");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[iOS BLE] Error unsubscribing from characteristic {_name}: {ex.Message}");
+                throw;
+            }
         }
     }
 }

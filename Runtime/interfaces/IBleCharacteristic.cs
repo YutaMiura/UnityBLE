@@ -10,6 +10,24 @@ namespace UnityBLE
     public interface IBleCharacteristic
     {
         string Uuid { get; }
+        CharacteristicProperties Properties { get; }
+        
+        /// <summary>
+        /// Check if the characteristic supports reading
+        /// </summary>
+        bool CanRead => Properties.CanRead();
+        
+        /// <summary>
+        /// Check if the characteristic supports writing
+        /// </summary>
+        bool CanWrite => Properties.CanWrite();
+        
+        /// <summary>
+        /// Check if the characteristic supports notifications
+        /// </summary>
+        bool CanNotify => Properties.CanNotify();
+
+        public event Action<byte[]> OnDataReceived;
 
         /// <summary>
         /// Read data from this characteristic.
@@ -21,16 +39,14 @@ namespace UnityBLE
         /// Write data to this characteristic.
         /// </summary>
         /// <param name="data">Data to write</param>
-        /// <param name="withResponse">Whether to wait for a response</param>
         /// <param name="cancellationToken">Token to cancel the write operation</param>
-        Task WriteAsync(byte[] data, bool withResponse, CancellationToken cancellationToken = default);
+        Task WriteAsync(byte[] data, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Subscribe to notifications for this characteristic.
         /// </summary>
-        /// <param name="onValueChanged">Callback when value changes</param>
         /// <param name="cancellationToken">Token to cancel the subscription operation</param>
-        Task SubscribeAsync(Action<byte[]> onValueChanged, CancellationToken cancellationToken = default);
+        Task SubscribeAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Unsubscribe from notifications for this characteristic.

@@ -22,7 +22,7 @@ namespace UnityBLE.macOS
             MacOSBleNativePlugin.OnScanCompleted += OnScanCompleted;
         }
 
-        public void Execute(TimeSpan duration)
+        public void Execute(TimeSpan duration, ScanFilter filter = null)
         {
             if (duration <= TimeSpan.Zero)
             {
@@ -49,17 +49,11 @@ namespace UnityBLE.macOS
             // Start native scan
             if (!MacOSBleNativePlugin.StartScan(duration.TotalSeconds))
             {
+                _isScanning = false;
                 throw new StartScanFailed();
             }
-            _isScanning = false;
             _scanCancellationTokenSource?.Dispose();
             _scanCancellationTokenSource = null;
-        }
-
-        public void Execute(TimeSpan duration, ScanFilter filter)
-        {
-            Debug.LogWarning("[macOS BLE] Scan filters are not yet implemented in macOS native plugin");
-            Execute(duration);
         }
 
         private void OnDeviceDiscovered(string deviceJson)
@@ -75,6 +69,7 @@ namespace UnityBLE.macOS
         private void OnScanCompleted()
         {
             Debug.Log("[macOS BLE] Native scan completed");
+            _isScanning = false;
             _events._scanCompleted?.Invoke();
         }
 

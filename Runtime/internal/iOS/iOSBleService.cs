@@ -16,6 +16,7 @@ namespace UnityBLE.iOS
 
         public string Name => _name;
         public string Uuid => _uuid;
+        public string DeviceAddress => _deviceAddress;
         public IEnumerable<IBleCharacteristic> Characteristics => _characteristics;
 
         public iOSBleService(string name, string uuid)

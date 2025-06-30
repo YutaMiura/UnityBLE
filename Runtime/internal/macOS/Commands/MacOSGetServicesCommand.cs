@@ -1,30 +1,29 @@
 using System.Collections.Generic;
 using System.Threading;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace UnityBLE.macOS
 {
     public class MacOSGetServicesCommand
     {
-        public async Task<IReadOnlyList<IBleService>> ExecuteAsync(IBleDevice device, CancellationToken cancellationToken = default)
+        public IReadOnlyList<MacOSBleService> Execute(MacOSBleDevice device, CancellationToken cancellationToken = default)
         {
             if (device == null)
             {
                 Debug.LogError("[macOS BLE] Device cannot be null.");
-                return new List<IBleService>();
+                return new List<MacOSBleService>();
             }
 
             if (string.IsNullOrEmpty(device.Address))
             {
                 Debug.LogError("[macOS BLE] Device address is not set.");
-                return new List<IBleService>();
+                return new List<MacOSBleService>();
             }
 
             if (!device.IsConnected)
             {
                 Debug.LogError($"[macOS BLE] Device {device.Address} is not connected.");
-                return new List<IBleService>();
+                return new List<MacOSBleService>();
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -33,7 +32,7 @@ namespace UnityBLE.macOS
             if (!MacOSBleNativePlugin.Initialize())
             {
                 Debug.LogError("[macOS BLE] Failed to initialize macOS BLE native plugin");
-                return new List<IBleService>();
+                return new List<MacOSBleService>();
             }
 
             Debug.Log($"[macOS BLE] Discovering services for device {device.Address}...");
@@ -46,15 +45,15 @@ namespace UnityBLE.macOS
                 if (serviceUUIDs == null || serviceUUIDs.Length == 0)
                 {
                     Debug.LogWarning($"[macOS BLE] No services found for device {device.Address}");
-                    return new List<IBleService>();
+                    return new List<MacOSBleService>();
                 }
 
-                var services = new List<IBleService>();
+                var services = new List<MacOSBleService>();
                 foreach (var uuid in serviceUUIDs)
                 {
                     // Try to get a friendly name for the service
                     string serviceName = GetServiceName(uuid);
-                    services.Add(new MacOSBleService(serviceName, uuid));
+                    services.Add(new MacOSBleService(serviceName, uuid, device.Address));
                 }
 
                 Debug.Log($"[macOS BLE] Discovered {services.Count} services for device {device.Address}");
@@ -64,7 +63,7 @@ namespace UnityBLE.macOS
             catch (System.Exception ex)
             {
                 Debug.LogError($"[macOS BLE] Error discovering services: {ex.Message}");
-                return new List<IBleService>();
+                return new List<MacOSBleService>();
             }
         }
 

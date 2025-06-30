@@ -1,4 +1,12 @@
+#if UNITY_EDITOR_OSX
 using UnityBLE.macOS;
+#elif !UNITY_EDITOR && UNITY_IOS
+using UnityBLE.iOS;
+#elif !UNITY_EDITOR && UNITY_ANDROID
+using UnityBLE.Android;
+#else
+using System;
+#endif
 
 namespace UnityBLE
 {
@@ -26,7 +34,7 @@ namespace UnityBLE
 #if UNITY_ANDROID && !UNITY_EDITOR
             Scanner = new AndroidBleScanner();
 #elif UNITY_IOS && !UNITY_EDITOR
-            throw new NotSupportedException("BleManager is not supported in iOS platform.");
+            Scanner = new iOSBleScanner();
 #elif UNITY_EDITOR_OSX
             Scanner = new MacOSBleScanner();
 #elif UNITY_EDITOR_64

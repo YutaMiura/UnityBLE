@@ -16,6 +16,8 @@ namespace UnityBLE
         public delegate void DeviceDisconnectedDelegate(string deviceJson);
         public delegate void ScanCompletedDelegate();
         public delegate void CharacteristicValueDelegate(string characteristicJson, string valueHex);
+        public delegate void ServicesDiscoveredDelegate(string deviceAddress, string servicesJson);
+        public delegate void CharacteristicsDiscoveredDelegate(string deviceAddress, string serviceUuid, string characteristicsJson);
         public delegate void ErrorDelegate(string errorMessage);
         public delegate void LogDelegate(string logMessage);
 
@@ -57,10 +59,19 @@ namespace UnityBLE
         private static extern IntPtr MacOSBlePlugin_GetCharacteristics(string address, string serviceUUID, out int count);
 
         [DllImport("__Internal")]
+        private static extern IntPtr MacOSBlePlugin_GetCharacteristicProperties(string address, string serviceUUID, string characteristicUUID);
+
+        [DllImport("__Internal")]
         private static extern bool MacOSBlePlugin_ReadCharacteristic(string address, string serviceUUID, string characteristicUUID);
 
         [DllImport("__Internal")]
         private static extern bool MacOSBlePlugin_WriteCharacteristic(string address, string serviceUUID, string characteristicUUID, string dataHex);
+
+        [DllImport("__Internal")]
+        private static extern bool MacOSBlePlugin_SubscribeCharacteristic(string address, string serviceUUID, string characteristicUUID);
+
+        [DllImport("__Internal")]
+        private static extern bool MacOSBlePlugin_UnsubscribeCharacteristic(string address, string serviceUUID, string characteristicUUID);
 
         // Callback registration functions
         [DllImport("__Internal")]
@@ -83,6 +94,12 @@ namespace UnityBLE
 
         [DllImport("__Internal")]
         private static extern void MacOSBlePlugin_SetLogCallback(LogDelegate callback);
+
+        [DllImport("__Internal")]
+        private static extern void MacOSBlePlugin_SetServicesDiscoveredCallback(ServicesDiscoveredDelegate callback);
+
+        [DllImport("__Internal")]
+        private static extern void MacOSBlePlugin_SetCharacteristicsDiscoveredCallback(CharacteristicsDiscoveredDelegate callback);
 
         // Static callback methods (must be static for AOT)
         [MonoPInvokeCallback(typeof(DeviceDiscoveredDelegate))]
@@ -163,7 +180,7 @@ namespace UnityBLE
                 {
                     _isInitialized = true;
                     Debug.Log("[MacOSBleNativePlugin] Successfully initialized");
-                    
+
                     // Wait for Bluetooth to be ready (up to 5 seconds)
                     Debug.Log("[MacOSBleNativePlugin] Waiting for Bluetooth to be ready...");
                     bool bluetoothReady = MacOSBlePlugin_WaitForBluetoothReady(5.0);
@@ -407,6 +424,46 @@ namespace UnityBLE
         }
 
         /// <summary>
+        /// Get characteristic properties.
+        /// </summary>
+        public static CharacteristicProperties GetCharacteristicProperties(string address, string serviceUUID, string characteristicUUID)
+        {
+            if (!_isInitialized)
+            {
+                Debug.LogError("[MacOSBleNativePlugin] Not initialized");
+                return CharacteristicProperties.None;
+            }
+
+            try
+            {
+                IntPtr propertiesPtr = MacOSBlePlugin_GetCharacteristicProperties(address, serviceUUID, characteristicUUID);
+
+                if (propertiesPtr == IntPtr.Zero)
+                {
+                    Debug.LogWarning($"[MacOSBleNativePlugin] Failed to get properties for characteristic {characteristicUUID}");
+                    return CharacteristicProperties.None;
+                }
+
+                string propertiesJson = Marshal.PtrToStringAnsi(propertiesPtr);
+                Marshal.FreeHGlobal(propertiesPtr);
+
+                // Parse properties from JSON (assuming native plugin returns properties as integer)
+                if (int.TryParse(propertiesJson, out int propertiesValue))
+                {
+                    return (CharacteristicProperties)propertiesValue;
+                }
+
+                Debug.LogWarning($"[MacOSBleNativePlugin] Failed to parse characteristic properties: {propertiesJson}");
+                return CharacteristicProperties.None;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[MacOSBleNativePlugin] Exception during GetCharacteristicProperties: {ex.Message}");
+                return CharacteristicProperties.None;
+            }
+        }
+
+        /// <summary>
         /// Read a characteristic value.
         /// </summary>
         public static bool ReadCharacteristic(string address, string serviceUUID, string characteristicUUID)
@@ -456,6 +513,50 @@ namespace UnityBLE
                 return false;
             }
         }
+
+        /// <summary>
+        /// Subscribe to characteristic notifications.
+        /// </summary>
+        public static bool SubscribeCharacteristic(string address, string serviceUUID, string characteristicUUID)
+        {
+            if (!_isInitialized)
+            {
+                Debug.LogError("[MacOSBleNativePlugin] Not initialized");
+                return false;
+            }
+
+            try
+            {
+                return MacOSBlePlugin_SubscribeCharacteristic(address, serviceUUID, characteristicUUID);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[MacOSBleNativePlugin] Exception during SubscribeCharacteristic: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Unsubscribe from characteristic notifications.
+        /// </summary>
+        public static bool UnsubscribeCharacteristic(string address, string serviceUUID, string characteristicUUID)
+        {
+            if (!_isInitialized)
+            {
+                Debug.LogError("[MacOSBleNativePlugin] Not initialized");
+                return false;
+            }
+
+            try
+            {
+                return MacOSBlePlugin_UnsubscribeCharacteristic(address, serviceUUID, characteristicUUID);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[MacOSBleNativePlugin] Exception during UnsubscribeCharacteristic: {ex.Message}");
+                return false;
+            }
+        }
 #else
         // Stub implementations for non-macOS platforms
         public static bool Initialize()
@@ -469,7 +570,7 @@ namespace UnityBLE
             Debug.LogWarning("[MacOSBleNativePlugin] Not available on this platform");
             return false;
         }
-        
+
         public static bool WaitForBluetoothReady(double timeout)
         {
             Debug.LogWarning("[MacOSBleNativePlugin] Not available on this platform");
@@ -511,6 +612,12 @@ namespace UnityBLE
             return new string[0];
         }
 
+        public static CharacteristicProperties GetCharacteristicProperties(string address, string serviceUUID, string characteristicUUID)
+        {
+            Debug.LogWarning("[MacOSBleNativePlugin] Not available on this platform");
+            return CharacteristicProperties.None;
+        }
+
         public static bool ReadCharacteristic(string address, string serviceUUID, string characteristicUUID)
         {
             Debug.LogWarning("[MacOSBleNativePlugin] Not available on this platform");
@@ -522,6 +629,19 @@ namespace UnityBLE
             Debug.LogWarning("[MacOSBleNativePlugin] Not available on this platform");
             return false;
         }
+
+        public static bool SubscribeCharacteristic(string address, string serviceUUID, string characteristicUUID)
+        {
+            Debug.LogWarning("[MacOSBleNativePlugin] Not available on this platform");
+            return false;
+        }
+
+        public static bool UnsubscribeCharacteristic(string address, string serviceUUID, string characteristicUUID)
+        {
+            Debug.LogWarning("[MacOSBleNativePlugin] Not available on this platform");
+            return false;
+        }
+
 #endif
     }
 }

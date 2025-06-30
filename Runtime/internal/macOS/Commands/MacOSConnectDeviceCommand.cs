@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -8,11 +10,14 @@ namespace UnityBLE.macOS
     internal class MacOSConnectDeviceCommand
     {
         private readonly MacOSNativeMessageParser _messageParser;
-        private TaskCompletionSource<IBleDevice> _connectionCompletionSource;
 
-        public MacOSConnectDeviceCommand()
+        private readonly TaskCompletionSource<bool> _connectionCompletionSource = new();
+        private MacOSBleDevice _targetDevice;
+
+        public MacOSConnectDeviceCommand(MacOSBleDevice targetDevice)
         {
             _messageParser = new MacOSNativeMessageParser();
+            _targetDevice = targetDevice;
 
             // Subscribe to native plugin events
             MacOSBleNativePlugin.OnDeviceConnected += OnDeviceConnected;
@@ -26,11 +31,11 @@ namespace UnityBLE.macOS
             MacOSBleNativePlugin.OnError -= OnConnectionError;
         }
 
-        public async Task<IBleDevice> ExecuteAsync(string address, CancellationToken cancellationToken = default)
+        public async Task<IBleDevice> ExecuteAsync(CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(address))
+            if (_targetDevice == null)
             {
-                throw new ArgumentException("Device address is not set.", nameof(address));
+                throw new ArgumentException("Target device is not set.", nameof(_targetDevice));
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -41,60 +46,52 @@ namespace UnityBLE.macOS
                 throw new InvalidOperationException("Failed to initialize macOS BLE native plugin");
             }
 
-            _connectionCompletionSource = new TaskCompletionSource<IBleDevice>();
-
             try
             {
-                Debug.Log($"[macOS BLE] Connecting to device {address}...");
+                Debug.Log($"[macOS BLE] Connecting to device {_targetDevice.Address}...");
 
                 // Register cancellation callback
                 cancellationToken.Register(() =>
                 {
-                    Debug.Log($"[macOS BLE] Connection to device {address} was cancelled.");
-                    _connectionCompletionSource?.TrySetCanceled();
+                    Debug.Log($"[macOS BLE] Connection to device {_targetDevice.Address} was cancelled.");
+                    _connectionCompletionSource.TrySetCanceled();
                 });
 
                 // Start native connection
-                if (!MacOSBleNativePlugin.ConnectToDevice(address))
+                if (!MacOSBleNativePlugin.ConnectToDevice(_targetDevice.Address))
                 {
-                    throw new InvalidOperationException($"Failed to start connection to device {address}");
+                    throw new InvalidOperationException($"Failed to start connection to device {_targetDevice.Address}");
                 }
 
                 // Wait for connection completion or cancellation
-                var connectedDevice = await _connectionCompletionSource.Task;
-
-                Debug.Log($"[macOS BLE] Successfully connected to device: {connectedDevice}");
-
-                return connectedDevice;
+                if (await _connectionCompletionSource.Task)
+                {
+                    Debug.Log($"[macOS BLE] Successfully connected to device: {_targetDevice}");
+                    return _targetDevice;
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Connection to device {_targetDevice.Address} failed");
+                }
             }
             catch (OperationCanceledException)
             {
-                Debug.Log($"[macOS BLE] Connection to device {address} was cancelled.");
+                Debug.Log($"[macOS BLE] Connection to device {_targetDevice.Address} was cancelled.");
                 throw;
-            }
-            finally
-            {
-                _connectionCompletionSource = null;
             }
         }
 
         private void OnDeviceConnected(string deviceJson)
         {
             var device = _messageParser.ParseDeviceData(deviceJson);
-            if (device != null && _connectionCompletionSource != null)
-            {
-                Debug.Log($"[macOS BLE] Device connected callback: {device}");
-                _connectionCompletionSource.TrySetResult(device);
-            }
+            _targetDevice = device as MacOSBleDevice;
+            Debug.Log($"[macOS BLE] Device connected: {device.Address}");
+            _connectionCompletionSource.TrySetResult(true);
         }
 
         private void OnConnectionError(string errorMessage)
         {
-            if (_connectionCompletionSource != null)
-            {
-                Debug.LogError($"[macOS BLE] Connection error: {errorMessage}");
-                _connectionCompletionSource.TrySetException(new InvalidOperationException(errorMessage));
-            }
+            _connectionCompletionSource.TrySetException(new InvalidOperationException(errorMessage));
         }
     }
 }

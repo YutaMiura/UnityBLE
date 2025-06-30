@@ -57,10 +57,22 @@ namespace UnityBLE.iOS
         private static extern IntPtr iOSBlePlugin_GetCharacteristics(string address, string serviceUUID, out int count);
 
         [DllImport("__Internal")]
+        private static extern IntPtr iOSBlePlugin_GetCharacteristicProperties(string address, string serviceUUID, string characteristicUUID);
+
+        [DllImport("__Internal")]
         private static extern bool iOSBlePlugin_ReadCharacteristic(string address, string serviceUUID, string characteristicUUID);
 
         [DllImport("__Internal")]
         private static extern bool iOSBlePlugin_WriteCharacteristic(string address, string serviceUUID, string characteristicUUID, string dataHex);
+
+        [DllImport("__Internal")]
+        private static extern bool iOSBlePlugin_WriteCharacteristicWithResponse(string address, string serviceUUID, string characteristicUUID, string dataHex, bool withResponse);
+
+        [DllImport("__Internal")]
+        private static extern bool iOSBlePlugin_SubscribeCharacteristic(string address, string serviceUUID, string characteristicUUID);
+
+        [DllImport("__Internal")]
+        private static extern bool iOSBlePlugin_UnsubscribeCharacteristic(string address, string serviceUUID, string characteristicUUID);
 
         // Callback registration functions
         [DllImport("__Internal")]
@@ -163,7 +175,7 @@ namespace UnityBLE.iOS
                 {
                     _isInitialized = true;
                     Debug.Log("[iOSBleNativePlugin] Successfully initialized");
-                    
+
                     // Wait for Bluetooth to be ready (up to 5 seconds)
                     Debug.Log("[iOSBleNativePlugin] Waiting for Bluetooth to be ready...");
                     bool bluetoothReady = iOSBlePlugin_WaitForBluetoothReady(5.0);
@@ -407,6 +419,46 @@ namespace UnityBLE.iOS
         }
 
         /// <summary>
+        /// Get characteristic properties.
+        /// </summary>
+        public static CharacteristicProperties GetCharacteristicProperties(string address, string serviceUUID, string characteristicUUID)
+        {
+            if (!_isInitialized)
+            {
+                Debug.LogError("[iOSBleNativePlugin] Not initialized");
+                return CharacteristicProperties.None;
+            }
+
+            try
+            {
+                IntPtr propertiesPtr = iOSBlePlugin_GetCharacteristicProperties(address, serviceUUID, characteristicUUID);
+
+                if (propertiesPtr == IntPtr.Zero)
+                {
+                    Debug.LogWarning($"[iOSBleNativePlugin] Failed to get properties for characteristic {characteristicUUID}");
+                    return CharacteristicProperties.None;
+                }
+
+                string propertiesJson = Marshal.PtrToStringAnsi(propertiesPtr);
+                Marshal.FreeHGlobal(propertiesPtr);
+
+                // Parse properties from JSON (assuming native plugin returns properties as integer)
+                if (int.TryParse(propertiesJson, out int propertiesValue))
+                {
+                    return (CharacteristicProperties)propertiesValue;
+                }
+
+                Debug.LogWarning($"[iOSBleNativePlugin] Failed to parse characteristic properties: {propertiesJson}");
+                return CharacteristicProperties.None;
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[iOSBleNativePlugin] Exception during GetCharacteristicProperties: {ex.Message}");
+                return CharacteristicProperties.None;
+            }
+        }
+
+        /// <summary>
         /// Read a characteristic value.
         /// </summary>
         public static bool ReadCharacteristic(string address, string serviceUUID, string characteristicUUID)
@@ -456,6 +508,79 @@ namespace UnityBLE.iOS
                 return false;
             }
         }
+
+        /// <summary>
+        /// Write a characteristic value with response type option.
+        /// </summary>
+        public static bool WriteCharacteristicWithResponse(string address, string serviceUUID, string characteristicUUID, byte[] data, bool withResponse)
+        {
+            if (!_isInitialized)
+            {
+                Debug.LogError("[iOSBleNativePlugin] Not initialized");
+                return false;
+            }
+
+            try
+            {
+                // Convert byte array to hex string
+                string dataHex = "";
+                if (data != null && data.Length > 0)
+                {
+                    dataHex = BitConverter.ToString(data).Replace("-", "").ToLower();
+                }
+
+                return iOSBlePlugin_WriteCharacteristicWithResponse(address, serviceUUID, characteristicUUID, dataHex, withResponse);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[iOSBleNativePlugin] Exception during WriteCharacteristicWithResponse: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Subscribe to characteristic notifications.
+        /// </summary>
+        public static bool SubscribeCharacteristic(string address, string serviceUUID, string characteristicUUID)
+        {
+            if (!_isInitialized)
+            {
+                Debug.LogError("[iOSBleNativePlugin] Not initialized");
+                return false;
+            }
+
+            try
+            {
+                return iOSBlePlugin_SubscribeCharacteristic(address, serviceUUID, characteristicUUID);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[iOSBleNativePlugin] Exception during SubscribeCharacteristic: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Unsubscribe from characteristic notifications.
+        /// </summary>
+        public static bool UnsubscribeCharacteristic(string address, string serviceUUID, string characteristicUUID)
+        {
+            if (!_isInitialized)
+            {
+                Debug.LogError("[iOSBleNativePlugin] Not initialized");
+                return false;
+            }
+
+            try
+            {
+                return iOSBlePlugin_UnsubscribeCharacteristic(address, serviceUUID, characteristicUUID);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[iOSBleNativePlugin] Exception during UnsubscribeCharacteristic: {ex.Message}");
+                return false;
+            }
+        }
 #else
         // Stub implementations for non-iOS platforms
         public static bool Initialize()
@@ -469,7 +594,7 @@ namespace UnityBLE.iOS
             Debug.LogWarning("[iOSBleNativePlugin] Not available on this platform");
             return false;
         }
-        
+
         public static bool WaitForBluetoothReady(double timeout)
         {
             Debug.LogWarning("[iOSBleNativePlugin] Not available on this platform");
@@ -511,6 +636,12 @@ namespace UnityBLE.iOS
             return new string[0];
         }
 
+        public static CharacteristicProperties GetCharacteristicProperties(string address, string serviceUUID, string characteristicUUID)
+        {
+            Debug.LogWarning("[iOSBleNativePlugin] Not available on this platform");
+            return CharacteristicProperties.None;
+        }
+
         public static bool ReadCharacteristic(string address, string serviceUUID, string characteristicUUID)
         {
             Debug.LogWarning("[iOSBleNativePlugin] Not available on this platform");
@@ -518,6 +649,24 @@ namespace UnityBLE.iOS
         }
 
         public static bool WriteCharacteristic(string address, string serviceUUID, string characteristicUUID, byte[] data)
+        {
+            Debug.LogWarning("[iOSBleNativePlugin] Not available on this platform");
+            return false;
+        }
+
+        public static bool WriteCharacteristicWithResponse(string address, string serviceUUID, string characteristicUUID, byte[] data, bool withResponse)
+        {
+            Debug.LogWarning("[iOSBleNativePlugin] Not available on this platform");
+            return false;
+        }
+
+        public static bool SubscribeCharacteristic(string address, string serviceUUID, string characteristicUUID)
+        {
+            Debug.LogWarning("[iOSBleNativePlugin] Not available on this platform");
+            return false;
+        }
+
+        public static bool UnsubscribeCharacteristic(string address, string serviceUUID, string characteristicUUID)
         {
             Debug.LogWarning("[iOSBleNativePlugin] Not available on this platform");
             return false;

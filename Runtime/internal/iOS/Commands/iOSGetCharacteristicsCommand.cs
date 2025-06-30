@@ -56,7 +56,11 @@ namespace UnityBLE.iOS
                 {
                     // Try to get a friendly name for the characteristic
                     string characteristicName = GetCharacteristicName(uuid);
-                    characteristics.Add(new iOSBleCharacteristic(characteristicName, uuid, deviceAddress, service.Uuid));
+                    
+                    // Get characteristic properties from native plugin
+                    CharacteristicProperties properties = iOSBleNativePlugin.GetCharacteristicProperties(deviceAddress, service.Uuid, uuid);
+                    
+                    characteristics.Add(new iOSBleCharacteristic(characteristicName, uuid, deviceAddress, service.Uuid, properties));
                 }
 
                 Debug.Log($"[iOS BLE] Discovered {characteristics.Count} characteristics for service {service.Uuid}");

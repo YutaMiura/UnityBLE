@@ -2,135 +2,138 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
+using UnityBLE.Android;
 
 namespace UnityBLE
 {
     /// <summary>
-    /// Android implementation of IBleCharacteristic.
+    /// Android implementation of IBleCharacteristic using Command pattern for BLE operations.
     /// </summary>
     public class AndroidBleCharacteristic : IBleCharacteristic
     {
         private readonly string _uuid;
         private readonly IBleService _service;
+        private readonly CharacteristicProperties _properties;
+        private AndroidSubscribeCharacteristicCommand _subscribeCommand;
+        private bool _isSubscribed;
+
         public string Uuid => _uuid;
         public IBleService Service => _service;
+        public CharacteristicProperties Properties => _properties;
 
-        public AndroidBleCharacteristic(string uuid, IBleService service)
+        public event Action<byte[]> OnDataReceived;
+
+        public AndroidBleCharacteristic(string uuid, IBleService service, CharacteristicProperties properties)
         {
             _uuid = uuid;
             _service = service;
+            _properties = properties;
         }
 
-        public Task<byte[]> ReadAsync(CancellationToken cancellationToken = default)
+        public async Task<byte[]> ReadAsync(CancellationToken cancellationToken = default)
         {
-            // Check for cancellation before starting
             cancellationToken.ThrowIfCancellationRequested();
 
-            var completionSource = new TaskCompletionSource<byte[]>();
-
-            // Register cancellation callback
-            using var cancellationRegistration = cancellationToken.Register(() =>
+            if (!Properties.CanRead())
             {
-                Debug.Log($"Read operation for characteristic {_uuid} was cancelled");
-                completionSource.TrySetCanceled();
-            });
+                throw new InvalidOperationException($"Characteristic {_uuid} does not support reading");
+            }
 
-            // TODO: Implement Android-specific read logic
-            // For now, simulate completion with empty data
+            var readCommand = new AndroidReadCharacteristicCommand(_service.DeviceAddress, _service.Uuid, _uuid);
             try
             {
-                completionSource.SetResult(new byte[0]);
+                return await readCommand.ExecuteAsync(cancellationToken);
             }
-            catch (Exception e)
+            finally
             {
-                completionSource.TrySetException(e);
+                readCommand.Dispose();
             }
-
-            return completionSource.Task;
         }
 
-        public Task WriteAsync(byte[] data, bool withResponse, CancellationToken cancellationToken = default)
+        public async Task WriteAsync(byte[] data, CancellationToken cancellationToken = default)
         {
-            // Check for cancellation before starting
             cancellationToken.ThrowIfCancellationRequested();
 
-            var completionSource = new TaskCompletionSource<bool>();
-
-            // Register cancellation callback
-            using var cancellationRegistration = cancellationToken.Register(() =>
+            if (!Properties.CanWrite())
             {
-                Debug.Log($"Write operation for characteristic {_uuid} was cancelled");
-                completionSource.TrySetCanceled();
-            });
+                throw new InvalidOperationException($"Characteristic {_uuid} does not support writing");
+            }
 
-            // TODO: Implement Android-specific write logic
-            // For now, simulate completion
+            if (data == null)
+            {
+                throw new ArgumentNullException(nameof(data));
+            }
+
+            // Use write with response by default for reliability
+            var writeCommand = new AndroidWriteCharacteristicCommand(_service.DeviceAddress, _service.Uuid, _uuid, data, true);
             try
             {
-                completionSource.SetResult(true);
+                await writeCommand.ExecuteAsync(cancellationToken);
             }
-            catch (Exception e)
+            finally
             {
-                completionSource.TrySetException(e);
+                writeCommand.Dispose();
             }
-
-            return completionSource.Task.ContinueWith(_ => { }, cancellationToken);
         }
 
-        public Task SubscribeAsync(Action<byte[]> onValueChanged, CancellationToken cancellationToken = default)
+        public async Task SubscribeAsync(CancellationToken cancellationToken = default)
         {
-            // Check for cancellation before starting
             cancellationToken.ThrowIfCancellationRequested();
 
-            var completionSource = new TaskCompletionSource<bool>();
-
-            // Register cancellation callback
-            using var cancellationRegistration = cancellationToken.Register(() =>
+            if (!Properties.CanNotify())
             {
-                Debug.Log($"Subscribe operation for characteristic {_uuid} was cancelled");
-                completionSource.TrySetCanceled();
-            });
+                throw new InvalidOperationException($"Characteristic {_uuid} does not support notifications");
+            }
 
-            // TODO: Implement Android-specific subscription logic
-            // For now, simulate completion
+            if (_isSubscribed)
+            {
+                Debug.LogWarning($"[Android BLE] Already subscribed to characteristic {_uuid}");
+                return;
+            }
+
+            _subscribeCommand = new AndroidSubscribeCharacteristicCommand(_service.DeviceAddress, _service.Uuid, _uuid);
             try
             {
-                completionSource.SetResult(true);
+                await _subscribeCommand.ExecuteAsync(OnDataReceived, cancellationToken);
+                _isSubscribed = true;
             }
-            catch (Exception e)
+            catch
             {
-                completionSource.TrySetException(e);
+                _subscribeCommand?.Dispose();
+                _subscribeCommand = null;
+                throw;
             }
-
-            return completionSource.Task.ContinueWith(_ => { }, cancellationToken);
         }
 
-        public Task UnsubscribeAsync(CancellationToken cancellationToken = default)
+        public async Task UnsubscribeAsync(CancellationToken cancellationToken = default)
         {
-            // Check for cancellation before starting
             cancellationToken.ThrowIfCancellationRequested();
 
-            var completionSource = new TaskCompletionSource<bool>();
-
-            // Register cancellation callback
-            using var cancellationRegistration = cancellationToken.Register(() =>
+            if (!Properties.CanNotify())
             {
-                Debug.Log($"Unsubscribe operation for characteristic {_uuid} was cancelled");
-                completionSource.TrySetCanceled();
-            });
+                throw new InvalidOperationException($"Characteristic {_uuid} does not support notifications");
+            }
 
-            // TODO: Implement Android-specific unsubscription logic
-            // For now, simulate completion
+            if (!_isSubscribed)
+            {
+                Debug.LogWarning($"[Android BLE] Not subscribed to characteristic {_uuid}");
+                return;
+            }
+
+            var unsubscribeCommand = new AndroidUnsubscribeCharacteristicCommand(_service.DeviceAddress, _service.Uuid, _uuid);
             try
             {
-                completionSource.SetResult(true);
-            }
-            catch (Exception e)
-            {
-                completionSource.TrySetException(e);
-            }
+                await unsubscribeCommand.ExecuteAsync(cancellationToken);
+                _isSubscribed = false;
 
-            return completionSource.Task.ContinueWith(_ => { }, cancellationToken);
+                _subscribeCommand?.Dispose();
+                _subscribeCommand = null;
+            }
+            finally
+            {
+                unsubscribeCommand.Dispose();
+            }
         }
+
     }
 }

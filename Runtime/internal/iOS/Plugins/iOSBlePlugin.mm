@@ -38,6 +38,9 @@ typedef void (*UnityLogCallback)(const char* logMessage);
 - (NSArray<NSString *> *)getCharacteristicsForService:(NSString *)serviceUUID deviceAddress:(NSString *)address;
 - (BOOL)readCharacteristic:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address;
 - (BOOL)writeCharacteristic:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address data:(NSData *)data;
+- (BOOL)writeCharacteristicWithResponse:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address data:(NSData *)data withResponse:(BOOL)withResponse;
+- (BOOL)subscribeCharacteristic:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address;
+- (BOOL)unsubscribeCharacteristic:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address;
 
 @end
 
@@ -267,6 +270,53 @@ typedef void (*UnityLogCallback)(const char* logMessage);
     return YES;
 }
 
+- (BOOL)writeCharacteristicWithResponse:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address data:(NSData *)data withResponse:(BOOL)withResponse {
+    CBCharacteristic *characteristic = [self findCharacteristic:characteristicUUID inService:serviceUUID forDevice:address];
+    if (!characteristic) {
+        [self unityLog:[NSString stringWithFormat:@"[iOSBlePlugin] Characteristic not found: %@ in service: %@ for device: %@", characteristicUUID, serviceUUID, address]];
+        return NO;
+    }
+    
+    CBPeripheral *peripheral = self._connectedPeripherals[address];
+    CBCharacteristicWriteType writeType = withResponse ? CBCharacteristicWriteWithResponse : CBCharacteristicWriteWithoutResponse;
+    
+    [self unityLog:[NSString stringWithFormat:@"[iOSBlePlugin] Writing to characteristic %@ with response: %@", characteristicUUID, withResponse ? @"YES" : @"NO"]];
+    [peripheral writeValue:data forCharacteristic:characteristic type:writeType];
+    return YES;
+}
+
+- (BOOL)subscribeCharacteristic:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address {
+    CBCharacteristic *characteristic = [self findCharacteristic:characteristicUUID inService:serviceUUID forDevice:address];
+    if (!characteristic) {
+        [self unityLog:[NSString stringWithFormat:@"[iOSBlePlugin] Characteristic not found for subscription: %@ in service: %@ for device: %@", characteristicUUID, serviceUUID, address]];
+        return NO;
+    }
+    
+    // Check if characteristic supports notifications or indications
+    if (!(characteristic.properties & CBCharacteristicPropertyNotify) && !(characteristic.properties & CBCharacteristicPropertyIndicate)) {
+        [self unityLog:[NSString stringWithFormat:@"[iOSBlePlugin] Characteristic %@ does not support notifications or indications", characteristicUUID]];
+        return NO;
+    }
+    
+    CBPeripheral *peripheral = self._connectedPeripherals[address];
+    [self unityLog:[NSString stringWithFormat:@"[iOSBlePlugin] Subscribing to characteristic: %@", characteristicUUID]];
+    [peripheral setNotifyValue:YES forCharacteristic:characteristic];
+    return YES;
+}
+
+- (BOOL)unsubscribeCharacteristic:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address {
+    CBCharacteristic *characteristic = [self findCharacteristic:characteristicUUID inService:serviceUUID forDevice:address];
+    if (!characteristic) {
+        [self unityLog:[NSString stringWithFormat:@"[iOSBlePlugin] Characteristic not found for unsubscription: %@ in service: %@ for device: %@", characteristicUUID, serviceUUID, address]];
+        return NO;
+    }
+    
+    CBPeripheral *peripheral = self._connectedPeripherals[address];
+    [self unityLog:[NSString stringWithFormat:@"[iOSBlePlugin] Unsubscribing from characteristic: %@", characteristicUUID]];
+    [peripheral setNotifyValue:NO forCharacteristic:characteristic];
+    return YES;
+}
+
 - (void)unityLog:(NSString *)message {
     NSLog(@"%@", message);  // Keep NSLog for Xcode console
     if (self.logCallback) {
@@ -434,8 +484,14 @@ typedef void (*UnityLogCallback)(const char* logMessage);
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
     if (error) {
         [self unityLog:[NSString stringWithFormat:@"[iOSBlePlugin] Error reading characteristic: %@", error.localizedDescription]];
+        if (self.errorCallback) {
+            NSString *errorMsg = [NSString stringWithFormat:@"Error reading characteristic %@: %@", characteristic.UUID.UUIDString, error.localizedDescription];
+            self.errorCallback([errorMsg UTF8String]);
+        }
         return;
     }
+    
+    [self unityLog:[NSString stringWithFormat:@"[iOSBlePlugin] Characteristic value updated: %@ from device: %@", characteristic.UUID.UUIDString, peripheral.identifier.UUIDString]];
     
     if (self.characteristicValueCallback) {
         NSMutableDictionary *charDict = [[NSMutableDictionary alloc] init];
@@ -459,6 +515,31 @@ typedef void (*UnityLogCallback)(const char* logMessage);
         }
         
         self.characteristicValueCallback([charJson UTF8String], [valueHex UTF8String]);
+    }
+}
+
+- (void)peripheral:(CBPeripheral *)peripheral didWriteValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
+    if (error) {
+        [self unityLog:[NSString stringWithFormat:@"[iOSBlePlugin] Error writing characteristic: %@", error.localizedDescription]];
+        if (self.errorCallback) {
+            NSString *errorMsg = [NSString stringWithFormat:@"Error writing characteristic %@: %@", characteristic.UUID.UUIDString, error.localizedDescription];
+            self.errorCallback([errorMsg UTF8String]);
+        }
+    } else {
+        [self unityLog:[NSString stringWithFormat:@"[iOSBlePlugin] Characteristic written successfully: %@", characteristic.UUID.UUIDString]];
+    }
+}
+
+- (void)peripheral:(CBPeripheral *)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
+    if (error) {
+        [self unityLog:[NSString stringWithFormat:@"[iOSBlePlugin] Error updating notification state: %@", error.localizedDescription]];
+        if (self.errorCallback) {
+            NSString *errorMsg = [NSString stringWithFormat:@"Error updating notification state for %@: %@", characteristic.UUID.UUIDString, error.localizedDescription];
+            self.errorCallback([errorMsg UTF8String]);
+        }
+    } else {
+        BOOL isNotifying = characteristic.isNotifying;
+        [self unityLog:[NSString stringWithFormat:@"[iOSBlePlugin] Notification state updated for characteristic %@: %@", characteristic.UUID.UUIDString, isNotifying ? @"ON" : @"OFF"]];
     }
 }
 
@@ -581,5 +662,36 @@ extern "C" {
         }
         
         return [[iOSBlePlugin sharedInstance] writeCharacteristic:characteristicUUIDStr serviceUUID:serviceUUIDStr deviceAddress:addressStr data:data];
+    }
+    
+    BOOL iOSBlePlugin_WriteCharacteristicWithResponse(const char* address, const char* serviceUUID, const char* characteristicUUID, const char* dataHex, BOOL withResponse) {
+        NSString *addressStr = [NSString stringWithUTF8String:address];
+        NSString *serviceUUIDStr = [NSString stringWithUTF8String:serviceUUID];
+        NSString *characteristicUUIDStr = [NSString stringWithUTF8String:characteristicUUID];
+        NSString *dataHexStr = [NSString stringWithUTF8String:dataHex];
+        
+        // Convert hex string to NSData
+        NSMutableData *data = [[NSMutableData alloc] init];
+        for (NSUInteger i = 0; i < dataHexStr.length; i += 2) {
+            NSString *hexByte = [dataHexStr substringWithRange:NSMakeRange(i, 2)];
+            unsigned char byte = (unsigned char)strtol([hexByte UTF8String], NULL, 16);
+            [data appendBytes:&byte length:1];
+        }
+        
+        return [[iOSBlePlugin sharedInstance] writeCharacteristicWithResponse:characteristicUUIDStr serviceUUID:serviceUUIDStr deviceAddress:addressStr data:data withResponse:withResponse];
+    }
+    
+    BOOL iOSBlePlugin_SubscribeCharacteristic(const char* address, const char* serviceUUID, const char* characteristicUUID) {
+        NSString *addressStr = [NSString stringWithUTF8String:address];
+        NSString *serviceUUIDStr = [NSString stringWithUTF8String:serviceUUID];
+        NSString *characteristicUUIDStr = [NSString stringWithUTF8String:characteristicUUID];
+        return [[iOSBlePlugin sharedInstance] subscribeCharacteristic:characteristicUUIDStr serviceUUID:serviceUUIDStr deviceAddress:addressStr];
+    }
+    
+    BOOL iOSBlePlugin_UnsubscribeCharacteristic(const char* address, const char* serviceUUID, const char* characteristicUUID) {
+        NSString *addressStr = [NSString stringWithUTF8String:address];
+        NSString *serviceUUIDStr = [NSString stringWithUTF8String:serviceUUID];
+        NSString *characteristicUUIDStr = [NSString stringWithUTF8String:characteristicUUID];
+        return [[iOSBlePlugin sharedInstance] unsubscribeCharacteristic:characteristicUUIDStr serviceUUID:serviceUUIDStr deviceAddress:addressStr];
     }
 }

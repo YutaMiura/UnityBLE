@@ -1,126 +1,163 @@
 using System;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using UnityBLE.macOS;
 using UnityEngine;
 
 namespace UnityBLE
 {
     /// <summary>
-    /// macOS Unity Editor implementation of IBleCharacteristic for testing purposes.
+    /// macOS implementation of IBleCharacteristic using Core Bluetooth via native plugin.
     /// </summary>
-    public class MacOSBleCharacteristic : IBleCharacteristic
+    public class MacOSBleCharacteristic : IBleCharacteristic, IDisposable
     {
         private readonly string _name;
         private readonly string _uuid;
+        private readonly MacOSBleService _service;
+        private readonly CharacteristicProperties _properties;
         private byte[] _value;
-        private readonly bool _canRead;
-        private readonly bool _canWrite;
-        private readonly bool _canNotify;
+
+        private MacOSSubscribeCharacteristicCommand _subscribeCommand;
+        private bool _disposed;
 
         public string Name => _name;
         public string Uuid => _uuid;
         public byte[] Value => _value;
-        public bool CanRead => _canRead;
-        public bool CanWrite => _canWrite;
-        public bool CanNotify => _canNotify;
+        public CharacteristicProperties Properties => _properties;
 
-        public MacOSBleCharacteristic(string name, string uuid)
+        public event Action<byte[]> OnDataReceived;
+        public MacOSBleCharacteristic(string name, string uuid, MacOSBleService service, CharacteristicProperties properties)
         {
-            _name = name;
-            _uuid = uuid;
+            _name = name ?? throw new ArgumentNullException(nameof(name));
+            _uuid = uuid ?? throw new ArgumentNullException(nameof(uuid));
+            _service = service ?? throw new ArgumentNullException(nameof(service));
+            _properties = properties;
             _value = new byte[0];
-
-            _canRead = true;
-            _canWrite = uuid.ToLower() != "00002a05-0000-1000-8000-00805f9b34fb"; // Service Changed is read-only
-            _canNotify = uuid.ToLower() == "00002a05-0000-1000-8000-00805f9b34fb"; // Service Changed can notify
         }
 
         public async Task<byte[]> ReadAsync(CancellationToken cancellationToken = default)
         {
-            if (!_canRead)
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(MacOSBleCharacteristic));
+
+            if (!Properties.CanRead())
             {
                 throw new InvalidOperationException($"Characteristic {_name} ({_uuid}) does not support reading");
             }
 
-            Debug.Log($"[macOS BLE] Reading characteristic {_name} ({_uuid})...");
-
-            await Task.Delay(300, cancellationToken);
-
-            _value = _uuid.ToLower() switch
+            var readCommand = new MacOSReadCharacteristicCommand(_service.DeviceAddress, _service.Uuid, _uuid);
+            try
             {
-                "00002a00-0000-1000-8000-00805f9b34fb" => Encoding.UTF8.GetBytes("macOS Test Device"),
-                "00002a01-0000-1000-8000-00805f9b34fb" => BitConverter.GetBytes((ushort)0x0080), // Generic Computer
-                "00002a29-0000-1000-8000-00805f9b34fb" => Encoding.UTF8.GetBytes("Unity Technologies"),
-                "00002a24-0000-1000-8000-00805f9b34fb" => Encoding.UTF8.GetBytes("UnityBLE macOS"),
-                "00002a25-0000-1000-8000-00805f9b34fb" => Encoding.UTF8.GetBytes("SN001"),
-                _ => Encoding.UTF8.GetBytes("Mock Value")
-            };
-
-            Debug.Log($"[macOS BLE] Read {_value.Length} bytes from characteristic {_name}");
-
-            return _value;
+                var result = await readCommand.ExecuteAsync(cancellationToken);
+                _value = result;
+                return result;
+            }
+            finally
+            {
+                readCommand.Dispose();
+            }
         }
 
         public async Task WriteAsync(byte[] data, CancellationToken cancellationToken = default)
         {
-            if (!_canWrite)
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(MacOSBleCharacteristic));
+
+            if (!Properties.CanWrite())
             {
                 throw new InvalidOperationException($"Characteristic {_name} ({_uuid}) does not support writing");
             }
 
-            Debug.Log($"[macOS BLE] Writing {data.Length} bytes to characteristic {_name} ({_uuid})...");
+            if (data == null)
+            {
+                throw new ArgumentNullException(nameof(data));
+            }
 
-            await Task.Delay(300, cancellationToken);
+            // Use write with response by default for reliability
+            var writeCommand = new MacOSWriteCharacteristicCommand(_service.DeviceAddress, _service.Uuid, _uuid, data, true);
+            try
+            {
+                await writeCommand.ExecuteAsync(cancellationToken);
 
-            _value = new byte[data.Length];
-            Array.Copy(data, _value, data.Length);
-
-            Debug.Log($"[macOS BLE] Successfully wrote {data.Length} bytes to characteristic {_name}");
+                // Update local value cache
+                _value = new byte[data.Length];
+                Array.Copy(data, _value, data.Length);
+            }
+            finally
+            {
+                writeCommand.Dispose();
+            }
         }
 
-        public Task StartNotificationsAsync(Action<byte[]> onNotification, CancellationToken cancellationToken = default)
+        public async Task SubscribeAsync(CancellationToken cancellationToken = default)
         {
-            if (!_canNotify)
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(MacOSBleCharacteristic));
+
+            if (!Properties.CanNotify())
             {
                 throw new InvalidOperationException($"Characteristic {_name} ({_uuid}) does not support notifications");
             }
 
-            Debug.Log($"[macOS BLE] Starting notifications for characteristic {_name} ({_uuid})");
+            if (_subscribeCommand != null && _subscribeCommand.IsSubscribed)
+            {
+                Debug.LogWarning($"[macOS BLE] Already subscribed to characteristic {_name}");
+                return;
+            }
 
-            return Task.CompletedTask;
+            // Clean up any existing subscription command
+            _subscribeCommand?.Dispose();
+
+            // Create new subscription command
+            _subscribeCommand = new MacOSSubscribeCharacteristicCommand(_service.DeviceAddress, _service.Uuid, _uuid);
+
+            await _subscribeCommand.ExecuteAsync(OnDataReceived, cancellationToken);
         }
 
-        public Task StopNotificationsAsync(CancellationToken cancellationToken = default)
+        public async Task UnsubscribeAsync(CancellationToken cancellationToken = default)
         {
-            if (!_canNotify)
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(MacOSBleCharacteristic));
+
+            if (!Properties.CanNotify())
             {
                 throw new InvalidOperationException($"Characteristic {_name} ({_uuid}) does not support notifications");
             }
 
-            Debug.Log($"[macOS BLE] Stopping notifications for characteristic {_name} ({_uuid})");
+            if (_subscribeCommand == null || !_subscribeCommand.IsSubscribed)
+            {
+                Debug.LogWarning($"[macOS BLE] Not subscribed to characteristic {_name}");
+                return;
+            }
 
-            return Task.CompletedTask;
+            var unsubscribeCommand = new MacOSUnsubscribeCharacteristicCommand(_service.DeviceAddress, _service.Uuid, _uuid);
+            try
+            {
+                await unsubscribeCommand.ExecuteAsync(cancellationToken);
+
+                // Clean up subscription command
+                _subscribeCommand?.Dispose();
+                _subscribeCommand = null;
+            }
+            finally
+            {
+                unsubscribeCommand.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            if (!_disposed)
+            {
+                _subscribeCommand?.Dispose();
+                _subscribeCommand = null;
+                _disposed = true;
+            }
         }
 
         public override string ToString()
         {
-            return $"MacOSBleCharacteristic: {_name} ({_uuid}) R:{_canRead} W:{_canWrite} N:{_canNotify}";
-        }
-
-        public Task WriteAsync(byte[] data, bool withResponse, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task SubscribeAsync(Action<byte[]> onValueChanged, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task UnsubscribeAsync(CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
+            return $"MacOSBleCharacteristic: {_name} ({_uuid}) Properties: {_properties}";
         }
     }
 }

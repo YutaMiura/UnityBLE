@@ -48,7 +48,7 @@ namespace UnityBLE.Android
             var services = new List<IBleService>();
             foreach (var uuid in serviceUuids)
             {
-                services.Add(new AndroidBleService(uuid));
+                services.Add(new AndroidBleService(uuid, device.Address));
             }
 
             return Task.FromResult<IReadOnlyList<IBleService>>(services);

@@ -6,7 +6,9 @@ typedef void (*UnityDeviceDiscoveredCallback)(const char* deviceJson);
 typedef void (*UnityDeviceConnectedCallback)(const char* deviceJson);
 typedef void (*UnityDeviceDisconnectedCallback)(const char* deviceJson);
 typedef void (*UnityScanCompletedCallback)();
-typedef void (*UnityCharacteristicValueCallback)(const char* characteristicJson, const char* valueHex);
+typedef void (*UnityServicesDiscoveredCallback)(const char* deviceAddress, const char* servicesJson);
+typedef void (*UnityCharacteristicsDiscoveredCallback)(const char* deviceAddress, const char* serviceUuid, const char* characteristicsJson);
+typedef void (*UnityCharacteristicValueCallback)(const char* characteristicJson, const char* dataHex);
 typedef void (*UnityErrorCallback)(const char* errorMessage);
 typedef void (*UnityLogCallback)(const char* logMessage);
 
@@ -19,11 +21,16 @@ typedef void (*UnityLogCallback)(const char* logMessage);
 @property (nonatomic, strong) NSTimer *scanTimer;
 @property (nonatomic, assign) BOOL isBluetoothReady;
 
+// New property to track pending connected peripherals
+@property (nonatomic, strong) NSMutableSet<NSString *> *pendingConnectedPeripherals;
+
 // Unity callbacks
 @property (nonatomic, assign) UnityDeviceDiscoveredCallback deviceDiscoveredCallback;
 @property (nonatomic, assign) UnityDeviceConnectedCallback deviceConnectedCallback;
 @property (nonatomic, assign) UnityDeviceDisconnectedCallback deviceDisconnectedCallback;
 @property (nonatomic, assign) UnityScanCompletedCallback scanCompletedCallback;
+@property (nonatomic, assign) UnityServicesDiscoveredCallback servicesDiscoveredCallback;
+@property (nonatomic, assign) UnityCharacteristicsDiscoveredCallback characteristicsDiscoveredCallback;
 @property (nonatomic, assign) UnityCharacteristicValueCallback characteristicValueCallback;
 @property (nonatomic, assign) UnityErrorCallback errorCallback;
 @property (nonatomic, assign) UnityLogCallback logCallback;
@@ -38,6 +45,8 @@ typedef void (*UnityLogCallback)(const char* logMessage);
 - (NSArray<NSString *> *)getCharacteristicsForService:(NSString *)serviceUUID deviceAddress:(NSString *)address;
 - (BOOL)readCharacteristic:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address;
 - (BOOL)writeCharacteristic:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address data:(NSData *)data;
+- (BOOL)subscribeCharacteristic:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address;
+- (BOOL)unsubscribeCharacteristic:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address;
 
 @end
 
@@ -59,6 +68,7 @@ typedef void (*UnityLogCallback)(const char* logMessage);
         self.connectedPeripherals = [[NSMutableDictionary alloc] init];
         self.isScanning = NO;
         self.isBluetoothReady = NO;
+        self.pendingConnectedPeripherals = [[NSMutableSet alloc] init];
     }
     return self;
 }
@@ -256,6 +266,49 @@ typedef void (*UnityLogCallback)(const char* logMessage);
     return YES;
 }
 
+- (BOOL)subscribeCharacteristic:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address {
+    CBCharacteristic *characteristic = [self findCharacteristic:characteristicUUID inService:serviceUUID forDevice:address];
+    if (!characteristic) {
+        [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Characteristic %@ not found for subscription", characteristicUUID]];
+        return NO;
+    }
+
+    // Check if characteristic supports notifications or indications
+    if (!(characteristic.properties & CBCharacteristicPropertyNotify) &&
+        !(characteristic.properties & CBCharacteristicPropertyIndicate)) {
+        [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Characteristic %@ does not support notifications or indications", characteristicUUID]];
+        return NO;
+    }
+
+    CBPeripheral *peripheral = self.connectedPeripherals[address];
+    if (!peripheral) {
+        [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Peripheral %@ not connected", address]];
+        return NO;
+    }
+
+    [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Subscribing to characteristic %@ on device %@", characteristicUUID, address]];
+    [peripheral setNotifyValue:YES forCharacteristic:characteristic];
+    return YES;
+}
+
+- (BOOL)unsubscribeCharacteristic:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address {
+    CBCharacteristic *characteristic = [self findCharacteristic:characteristicUUID inService:serviceUUID forDevice:address];
+    if (!characteristic) {
+        [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Characteristic %@ not found for unsubscription", characteristicUUID]];
+        return NO;
+    }
+
+    CBPeripheral *peripheral = self.connectedPeripherals[address];
+    if (!peripheral) {
+        [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Peripheral %@ not connected", address]];
+        return NO;
+    }
+
+    [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Unsubscribing from characteristic %@ on device %@", characteristicUUID, address]];
+    [peripheral setNotifyValue:NO forCharacteristic:characteristic];
+    return YES;
+}
+
 - (void)unityLog:(NSString *)message {
     NSLog(@"%@", message);  // Keep NSLog for Xcode console
     if (self.logCallback) {
@@ -293,6 +346,7 @@ typedef void (*UnityLogCallback)(const char* logMessage);
     return nil;
 }
 
+// peripheralToJSON:rssi: returns a JSON string describing the peripheral, including services and characteristics
 - (NSString *)peripheralToJSON:(CBPeripheral *)peripheral rssi:(NSNumber *)rssi {
     @try {
         NSMutableDictionary *deviceDict = [[NSMutableDictionary alloc] init];
@@ -303,24 +357,54 @@ typedef void (*UnityLogCallback)(const char* logMessage);
             deviceName = peripheral.name;
         }
         deviceDict[@"name"] = deviceName;
-        
+
         // Safely handle peripheral address
         NSString *deviceAddress = @"00:00:00:00:00:00";
         if (peripheral.identifier && peripheral.identifier.UUIDString) {
             deviceAddress = peripheral.identifier.UUIDString;
         }
         deviceDict[@"address"] = deviceAddress;
-        
+
         // Safely handle rssi parameter
         NSNumber *deviceRssi = @(-50);
         if (rssi && [rssi isKindOfClass:[NSNumber class]]) {
             deviceRssi = rssi;
         }
         deviceDict[@"rssi"] = deviceRssi;
-        
+
         deviceDict[@"isConnectable"] = @YES;
         deviceDict[@"txPower"] = @0;
         deviceDict[@"advertisingData"] = @"";
+
+        // Add services and characteristics if available
+        NSMutableArray *servicesArray = [[NSMutableArray alloc] init];
+        
+        // Debug: Log peripheral services count
+        [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] peripheralToJSON: peripheral.services count = %lu", (unsigned long)(peripheral.services ? peripheral.services.count : 0)]];
+        
+        if (peripheral.services) {
+            for (CBService *service in peripheral.services) {
+                NSMutableDictionary *serviceDict = [[NSMutableDictionary alloc] init];
+                serviceDict[@"uuid"] = service.UUID.UUIDString;
+                
+                // Debug: Log service and characteristics count
+                [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Service %@: characteristics count = %lu", service.UUID.UUIDString, (unsigned long)(service.characteristics ? service.characteristics.count : 0)]];
+
+                NSMutableArray *characteristicsArray = [[NSMutableArray alloc] init];
+                if (service.characteristics) {
+                    for (CBCharacteristic *characteristic in service.characteristics) {
+                        [characteristicsArray addObject:characteristic.UUID.UUIDString];
+                    }
+                }
+                serviceDict[@"characteristics"] = characteristicsArray;
+                [servicesArray addObject:serviceDict];
+            }
+        } else {
+            [self unityLog:@"[MacOSBlePlugin] peripheralToJSON: peripheral.services is nil"];
+        }
+        
+        deviceDict[@"services"] = servicesArray;
+        [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] peripheralToJSON: final services array count = %lu", (unsigned long)servicesArray.count]];
 
         NSError *error = nil;
         NSData *jsonData = [NSJSONSerialization dataWithJSONObject:deviceDict options:0 error:&error];
@@ -385,7 +469,7 @@ typedef void (*UnityLogCallback)(const char* logMessage);
         // Safe logging
         NSString *peripheralName = (peripheral.name && peripheral.name.length > 0) ? peripheral.name : @"Unknown";
         NSString *rssiString = (RSSI && [RSSI isKindOfClass:[NSNumber class]]) ? [RSSI stringValue] : @"Unknown";
-        
+
         [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Discovered peripheral: %@ (%@) RSSI: %@",
               peripheralName, peripheral.identifier.UUIDString, rssiString]];
 
@@ -406,14 +490,8 @@ typedef void (*UnityLogCallback)(const char* logMessage);
 
     self.connectedPeripherals[peripheral.identifier.UUIDString] = peripheral;
     peripheral.delegate = self;
-
-    // Discover services
+    [self.pendingConnectedPeripherals addObject:peripheral.identifier.UUIDString];
     [peripheral discoverServices:nil];
-
-    if (self.deviceConnectedCallback) {
-        NSString *deviceJson = [self peripheralToJSON:peripheral rssi:nil];
-        self.deviceConnectedCallback([deviceJson UTF8String]);
-    }
 }
 
 - (void)centralManager:(CBCentralManager *)central didDisconnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error {
@@ -446,6 +524,22 @@ typedef void (*UnityLogCallback)(const char* logMessage);
 
     [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Discovered %lu services for peripheral: %@", (unsigned long)peripheral.services.count, peripheral.identifier.UUIDString]];
 
+    // Create JSON array of service UUIDs
+    NSMutableArray *serviceUuids = [[NSMutableArray alloc] init];
+    for (CBService *service in peripheral.services) {
+        [serviceUuids addObject:service.UUID.UUIDString];
+    }
+
+    // Notify Unity about discovered services
+    if (self.servicesDiscoveredCallback) {
+        NSError *jsonError;
+        NSData *jsonData = [NSJSONSerialization dataWithJSONObject:serviceUuids options:0 error:&jsonError];
+        if (!jsonError && jsonData) {
+            NSString *servicesJson = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+            self.servicesDiscoveredCallback([peripheral.identifier.UUIDString UTF8String], [servicesJson UTF8String]);
+        }
+    }
+
     // Discover characteristics for all services
     for (CBService *service in peripheral.services) {
         [peripheral discoverCharacteristics:nil forService:service];
@@ -459,6 +553,46 @@ typedef void (*UnityLogCallback)(const char* logMessage);
     }
 
     [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Discovered %lu characteristics for service: %@", (unsigned long)service.characteristics.count, service.UUID.UUIDString]];
+
+    // Create JSON array of characteristic UUIDs
+    NSMutableArray *characteristicUuids = [[NSMutableArray alloc] init];
+    for (CBCharacteristic *characteristic in service.characteristics) {
+        [characteristicUuids addObject:characteristic.UUID.UUIDString];
+    }
+
+    // Notify Unity about discovered characteristics
+    if (self.characteristicsDiscoveredCallback) {
+        NSError *jsonError;
+        NSData *jsonData = [NSJSONSerialization dataWithJSONObject:characteristicUuids options:0 error:&jsonError];
+        if (!jsonError && jsonData) {
+            NSString *characteristicsJson = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+            self.characteristicsDiscoveredCallback([peripheral.identifier.UUIDString UTF8String], [service.UUID.UUIDString UTF8String], [characteristicsJson UTF8String]);
+        }
+    }
+
+    // Check if all services have had their characteristics discovered
+    BOOL allDiscovered = YES;
+    for (CBService *s in peripheral.services) {
+        if (!s.characteristics) {
+            allDiscovered = NO;
+            break;
+        }
+    }
+    
+    [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] didDiscoverCharacteristicsForService - allDiscovered: %@, pendingPeripherals contains: %@", 
+                   allDiscovered ? @"YES" : @"NO", 
+                   [self.pendingConnectedPeripherals containsObject:peripheral.identifier.UUIDString] ? @"YES" : @"NO"]];
+    
+    if (allDiscovered && [self.pendingConnectedPeripherals containsObject:peripheral.identifier.UUIDString]) {
+        [self.pendingConnectedPeripherals removeObject:peripheral.identifier.UUIDString];
+        if (self.deviceConnectedCallback) {
+            [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Calling deviceConnectedCallback for peripheral: %@", peripheral.identifier.UUIDString]];
+            // Now that all services and characteristics are discovered, create the complete JSON
+            NSString *deviceJson = [self peripheralToJSON:peripheral rssi:nil];
+            [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Generated JSON: %@", deviceJson]];
+            self.deviceConnectedCallback([deviceJson UTF8String]);
+        }
+    }
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
@@ -492,6 +626,16 @@ typedef void (*UnityLogCallback)(const char* logMessage);
     }
 }
 
+- (void)peripheral:(CBPeripheral *)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error {
+    if (error) {
+        [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Error updating notification state for characteristic %@: %@", characteristic.UUID.UUIDString, error.localizedDescription]];
+        return;
+    }
+
+    NSString *status = characteristic.isNotifying ? @"enabled" : @"disabled";
+    [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Notification %@ for characteristic %@ on device %@", status, characteristic.UUID.UUIDString, peripheral.identifier.UUIDString]];
+}
+
 @end
 
 // C interface for Unity
@@ -510,6 +654,14 @@ extern "C" {
 
     void MacOSBlePlugin_SetScanCompletedCallback(UnityScanCompletedCallback callback) {
         [MacOSBlePlugin sharedInstance].scanCompletedCallback = callback;
+    }
+
+    void MacOSBlePlugin_SetServicesDiscoveredCallback(UnityServicesDiscoveredCallback callback) {
+        [MacOSBlePlugin sharedInstance].servicesDiscoveredCallback = callback;
+    }
+
+    void MacOSBlePlugin_SetCharacteristicsDiscoveredCallback(UnityCharacteristicsDiscoveredCallback callback) {
+        [MacOSBlePlugin sharedInstance].characteristicsDiscoveredCallback = callback;
     }
 
     void MacOSBlePlugin_SetCharacteristicValueCallback(UnityCharacteristicValueCallback callback) {
@@ -611,5 +763,29 @@ extern "C" {
         }
 
         return [[MacOSBlePlugin sharedInstance] writeCharacteristic:characteristicUUIDStr serviceUUID:serviceUUIDStr deviceAddress:addressStr data:data];
+    }
+
+    bool MacOSBlePlugin_SubscribeCharacteristic(const char* address, const char* serviceUUID, const char* characteristicUUID) {
+        if (!address || !serviceUUID || !characteristicUUID) {
+            return false;
+        }
+
+        NSString *addressStr = [NSString stringWithUTF8String:address];
+        NSString *serviceUUIDStr = [NSString stringWithUTF8String:serviceUUID];
+        NSString *characteristicUUIDStr = [NSString stringWithUTF8String:characteristicUUID];
+
+        return [[MacOSBlePlugin sharedInstance] subscribeCharacteristic:characteristicUUIDStr serviceUUID:serviceUUIDStr deviceAddress:addressStr];
+    }
+
+    bool MacOSBlePlugin_UnsubscribeCharacteristic(const char* address, const char* serviceUUID, const char* characteristicUUID) {
+        if (!address || !serviceUUID || !characteristicUUID) {
+            return false;
+        }
+
+        NSString *addressStr = [NSString stringWithUTF8String:address];
+        NSString *serviceUUIDStr = [NSString stringWithUTF8String:serviceUUID];
+        NSString *characteristicUUIDStr = [NSString stringWithUTF8String:characteristicUUID];
+
+        return [[MacOSBlePlugin sharedInstance] unsubscribeCharacteristic:characteristicUUIDStr serviceUUID:serviceUUIDStr deviceAddress:addressStr];
     }
 }
