@@ -133,7 +133,7 @@ namespace UnityBLE.Android
         private readonly TaskCompletionSource<bool> _taskSource;
         private readonly AndroidSubscribeCharacteristicCommand _command;
 
-        public CharacteristicNotificationCallback(TaskCompletionSource<bool> taskSource, AndroidSubscribeCharacteristicCommand command) 
+        public CharacteristicNotificationCallback(TaskCompletionSource<bool> taskSource, AndroidSubscribeCharacteristicCommand command)
             : base("unityble.CharacteristicNotificationCallback")
         {
             _taskSource = taskSource;
@@ -172,7 +172,7 @@ namespace UnityBLE.Android
     {
         private readonly TaskCompletionSource<bool> _taskSource;
 
-        public CharacteristicUnsubscribeCallback(TaskCompletionSource<bool> taskSource) 
+        public CharacteristicUnsubscribeCallback(TaskCompletionSource<bool> taskSource)
             : base("unityble.CharacteristicUnsubscribeCallback")
         {
             _taskSource = taskSource;

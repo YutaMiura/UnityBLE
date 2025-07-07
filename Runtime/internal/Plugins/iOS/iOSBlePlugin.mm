@@ -41,6 +41,7 @@ typedef void (*UnityLogCallback)(const char* logMessage);
 - (BOOL)writeCharacteristicWithResponse:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address data:(NSData *)data withResponse:(BOOL)withResponse;
 - (BOOL)subscribeCharacteristic:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address;
 - (BOOL)unsubscribeCharacteristic:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address;
+- (NSInteger)getCharacteristicProperties:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address;
 
 @end
 
@@ -315,6 +316,45 @@ typedef void (*UnityLogCallback)(const char* logMessage);
     [self unityLog:[NSString stringWithFormat:@"[iOSBlePlugin] Unsubscribing from characteristic: %@", characteristicUUID]];
     [peripheral setNotifyValue:NO forCharacteristic:characteristic];
     return YES;
+}
+
+- (NSInteger)getCharacteristicProperties:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address {
+    CBCharacteristic *characteristic = [self findCharacteristic:characteristicUUID inService:serviceUUID forDevice:address];
+    if (!characteristic) {
+        [self unityLog:[NSString stringWithFormat:@"[iOSBlePlugin] Characteristic not found for properties: %@ in service: %@ for device: %@", characteristicUUID, serviceUUID, address]];
+        return 0;
+    }
+    
+    // Convert CBCharacteristicProperties to our custom enum values
+    NSInteger properties = 0;
+    
+    if (characteristic.properties & CBCharacteristicPropertyBroadcast) {
+        properties |= 0x01; // Broadcast
+    }
+    if (characteristic.properties & CBCharacteristicPropertyRead) {
+        properties |= 0x02; // Read
+    }
+    if (characteristic.properties & CBCharacteristicPropertyWriteWithoutResponse) {
+        properties |= 0x04; // WriteWithoutResponse
+    }
+    if (characteristic.properties & CBCharacteristicPropertyWrite) {
+        properties |= 0x08; // Write
+    }
+    if (characteristic.properties & CBCharacteristicPropertyNotify) {
+        properties |= 0x10; // Notify
+    }
+    if (characteristic.properties & CBCharacteristicPropertyIndicate) {
+        properties |= 0x20; // Indicate
+    }
+    if (characteristic.properties & CBCharacteristicPropertyAuthenticatedSignedWrites) {
+        properties |= 0x40; // AuthenticatedSignedWrites
+    }
+    if (characteristic.properties & CBCharacteristicPropertyExtendedProperties) {
+        properties |= 0x80; // ExtendedProperties
+    }
+    
+    [self unityLog:[NSString stringWithFormat:@"[iOSBlePlugin] Characteristic %@ properties: %ld", characteristicUUID, (long)properties]];
+    return properties;
 }
 
 - (void)unityLog:(NSString *)message {
@@ -693,5 +733,16 @@ extern "C" {
         NSString *serviceUUIDStr = [NSString stringWithUTF8String:serviceUUID];
         NSString *characteristicUUIDStr = [NSString stringWithUTF8String:characteristicUUID];
         return [[iOSBlePlugin sharedInstance] unsubscribeCharacteristic:characteristicUUIDStr serviceUUID:serviceUUIDStr deviceAddress:addressStr];
+    }
+    
+    const char* iOSBlePlugin_GetCharacteristicProperties(const char* address, const char* serviceUUID, const char* characteristicUUID) {
+        NSString *addressStr = [NSString stringWithUTF8String:address];
+        NSString *serviceUUIDStr = [NSString stringWithUTF8String:serviceUUID];
+        NSString *characteristicUUIDStr = [NSString stringWithUTF8String:characteristicUUID];
+        NSInteger properties = [[iOSBlePlugin sharedInstance] getCharacteristicProperties:characteristicUUIDStr serviceUUID:serviceUUIDStr deviceAddress:addressStr];
+        
+        // Convert integer to string and return as C string
+        NSString *propertiesStr = [NSString stringWithFormat:@"%ld", (long)properties];
+        return strdup([propertiesStr UTF8String]);
     }
 }

@@ -47,6 +47,7 @@ typedef void (*UnityLogCallback)(const char* logMessage);
 - (BOOL)writeCharacteristic:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address data:(NSData *)data;
 - (BOOL)subscribeCharacteristic:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address;
 - (BOOL)unsubscribeCharacteristic:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address;
+- (NSNumber *)getCharacteristicProperties:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address;
 
 @end
 
@@ -307,6 +308,21 @@ typedef void (*UnityLogCallback)(const char* logMessage);
     [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Unsubscribing from characteristic %@ on device %@", characteristicUUID, address]];
     [peripheral setNotifyValue:NO forCharacteristic:characteristic];
     return YES;
+}
+
+- (NSNumber *)getCharacteristicProperties:(NSString *)characteristicUUID serviceUUID:(NSString *)serviceUUID deviceAddress:(NSString *)address {
+    CBCharacteristic *characteristic = [self findCharacteristic:characteristicUUID inService:serviceUUID forDevice:address];
+    if (!characteristic) {
+        [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Characteristic %@ not found for properties query", characteristicUUID]];
+        return @0;
+    }
+
+    CBCharacteristicProperties properties = characteristic.properties;
+    NSUInteger propertiesValue = (NSUInteger)properties;
+    
+    [self unityLog:[NSString stringWithFormat:@"[MacOSBlePlugin] Characteristic %@ properties: %lu", characteristicUUID, (unsigned long)propertiesValue]];
+    
+    return @(propertiesValue);
 }
 
 - (void)unityLog:(NSString *)message {
@@ -787,5 +803,30 @@ extern "C" {
         NSString *characteristicUUIDStr = [NSString stringWithUTF8String:characteristicUUID];
 
         return [[MacOSBlePlugin sharedInstance] unsubscribeCharacteristic:characteristicUUIDStr serviceUUID:serviceUUIDStr deviceAddress:addressStr];
+    }
+
+    char* MacOSBlePlugin_GetCharacteristicProperties(const char* address, const char* serviceUUID, const char* characteristicUUID) {
+        if (!address || !serviceUUID || !characteristicUUID) {
+            return NULL;
+        }
+
+        NSString *addressStr = [NSString stringWithUTF8String:address];
+        NSString *serviceUUIDStr = [NSString stringWithUTF8String:serviceUUID];
+        NSString *characteristicUUIDStr = [NSString stringWithUTF8String:characteristicUUID];
+
+        NSNumber *properties = [[MacOSBlePlugin sharedInstance] getCharacteristicProperties:characteristicUUIDStr serviceUUID:serviceUUIDStr deviceAddress:addressStr];
+        
+        if (!properties) {
+            return NULL;
+        }
+
+        // Convert NSNumber to string
+        NSString *propertiesString = [properties stringValue];
+        
+        // Allocate memory for the return string (Unity will need to free this)
+        char *result = (char*)malloc([propertiesString lengthOfBytesUsingEncoding:NSUTF8StringEncoding] + 1);
+        strcpy(result, [propertiesString UTF8String]);
+        
+        return result;
     }
 }

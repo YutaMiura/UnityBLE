@@ -24,6 +24,7 @@ namespace UnityBLE
         public string Uuid => _uuid;
         public byte[] Value => _value;
         public CharacteristicProperties Properties => _properties;
+        public bool IsManuallySubscribed => _subscribeCommand != null && _subscribeCommand.IsSubscribed;
 
         public event Action<byte[]> OnDataReceived;
         public MacOSBleCharacteristic(string name, string uuid, MacOSBleService service, CharacteristicProperties properties)

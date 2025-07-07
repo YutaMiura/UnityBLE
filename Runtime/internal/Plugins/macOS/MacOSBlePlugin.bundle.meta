@@ -32,7 +32,7 @@ PluginImporter:
       settings:
         CPU: AnyCPU
         DefaultValueInitialized: true
-        OS: AnyOS
+        OS: OSX
     Linux64:
       enabled: 0
       settings:

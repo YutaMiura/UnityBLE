@@ -35,28 +35,5 @@ namespace UnityBLE
         /// </summary>
         /// <param name="cancellationToken">Token to cancel the service discovery operation</param>
         Task ReloadServicesAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Subscribe to essential device characteristics (Service Changed, etc.).
-        /// This is typically called automatically after connection.
-        /// </summary>
-        /// <param name="cancellationToken">Token to cancel the subscription operation</param>
-        Task SubscribeToEssentialCharacteristicsAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Subscribe to a specific characteristic for notifications.
-        /// </summary>
-        /// <param name="serviceUuid">Service UUID</param>
-        /// <param name="characteristicUuid">Characteristic UUID</param>
-        /// <param name="cancellationToken">Token to cancel the subscription operation</param>
-        Task SubscribeToCharacteristicAsync(string serviceUuid, string characteristicUuid, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Unsubscribe from a specific characteristic.
-        /// </summary>
-        /// <param name="serviceUuid">Service UUID</param>
-        /// <param name="characteristicUuid">Characteristic UUID</param>
-        /// <param name="cancellationToken">Token to cancel the unsubscription operation</param>
-        Task UnsubscribeFromCharacteristicAsync(string serviceUuid, string characteristicUuid, CancellationToken cancellationToken = default);
     }
 }

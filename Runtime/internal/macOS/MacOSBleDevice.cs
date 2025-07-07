@@ -10,260 +10,119 @@ namespace UnityBLE.macOS
     /// <summary>
     /// macOS Unity Editor implementation of IBleDevice for testing purposes.
     /// </summary>
-    public class MacOSBleDevice : IBleDevice
+    public class MacOSBleDevice : UniversalBleDevice
     {
-        // BLE Standard UUIDs
-        private const string GENERIC_ACCESS_SERVICE_UUID = "00001800-0000-1000-8000-00805f9b34fb";
-        private const string SERVICE_CHANGED_CHARACTERISTIC_UUID = "00002a05-0000-1000-8000-00805f9b34fb";
-        private const string BATTERY_SERVICE_UUID = "0000180f-0000-1000-8000-00805f9b34fb";
-        private const string BATTERY_LEVEL_CHARACTERISTIC_UUID = "00002a19-0000-1000-8000-00805f9b34fb";
 
-        private readonly string _name;
-        private readonly string _address;
-        private readonly int _rssi;
-        private readonly bool _isConnectable;
-        private readonly int _txPower;
-        private readonly string _advertisingData;
-        private bool _isConnected = false;
-        internal List<IBleService> _services = new List<IBleService>();
-        
+
         // Subscription management
         private readonly Dictionary<string, MacOSSubscribeCharacteristicCommand> _subscribeCommands = new();
         private readonly Dictionary<string, MacOSUnsubscribeCharacteristicCommand> _unsubscribeCommands = new();
-
-        public string Name => _name;
-        public string Address => _address;
-        public int Rssi => _rssi;
-        public bool IsConnectable => _isConnectable;
-        public int TxPower => _txPower;
-        public string AdvertisingData => _advertisingData;
-        public bool IsConnected => _isConnected;
-
-        public BleDeviceEvents Events { get; } = new BleDeviceEvents();
-
-        public IEnumerable<IBleService> Services => _services;
+        private readonly Dictionary<string, MacOSSubscribeCharacteristicCommand> _autoSubscribeCommands = new();
 
         public MacOSBleDevice(string name, string address, int rssi, bool isConnectable, int txPower, string advertisingData)
         {
-            _name = name;
-            _address = address;
-            _rssi = rssi;
-            _isConnectable = isConnectable;
-            _txPower = txPower;
-            _advertisingData = advertisingData;
+            Name = name;
+            Address = address;
+            Rssi = rssi;
+            IsConnectable = isConnectable;
+            TxPower = txPower;
+            AdvertisingData = advertisingData;
         }
 
-        public async Task ConnectAsync(CancellationToken cancellationToken = default)
+        internal override Task<IBleDevice> ExecuteConnectAsync(CancellationToken cancellationToken)
         {
-            if (_isConnected)
-            {
-                Debug.Log($"[macOS BLE] Device {_address} is already connected");
-                return;
-            }
-
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var device = await new MacOSConnectDeviceCommand(this).ExecuteAsync(cancellationToken);
-            if (device == null)
-            {
-                Debug.LogError($"[macOS BLE] Failed to connect to device {_address}");
-                throw new InvalidOperationException($"Failed to connect to device {_address}");
-            }
-            if (device is not MacOSBleDevice macOSDevice)
-            {
-                Debug.LogError($"[macOS BLE] Connected device is not a MacOSBleDevice: {device}");
-                throw new InvalidOperationException($"Connected device is not a MacOSBleDevice: {device}");
-            }
-
-            _services = macOSDevice._services;
-            _isConnected = true;
-
-            Events.RaiseConnected(this);
-            Debug.Log($"[macOS BLE] Device {_address} connected successfully");
-
-            // Auto-subscribe to essential characteristics after connection
-            try
-            {
-                await SubscribeToEssentialCharacteristicsAsync(cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning($"[macOS BLE] Failed to auto-subscribe to essential characteristics: {ex.Message}");
-            }
+            return new MacOSConnectDeviceCommand(this).ExecuteAsync(cancellationToken);
         }
 
-        public async Task DisconnectAsync(CancellationToken cancellationToken = default)
+        internal override Task<bool> ExecuteDisconnectAsync(CancellationToken cancellationToken)
         {
-            if (!_isConnected)
-            {
-                Debug.Log($"[macOS BLE] Device {_address} is not connected");
-                return;
-            }
-
-            // Clean up all subscriptions before disconnecting
-            await CleanupSubscriptionsAsync();
-
-            if (await new MacOSDisconnectDeviceCommand().ExecuteAsync(this, cancellationToken))
-            {
-                _isConnected = false;
-                _services.Clear();
-                Events.RaiseDisconnected(this);
-                Debug.Log($"[macOS BLE] Device {_address} disconnected successfully");
-            }
+            return new MacOSDisconnectDeviceCommand().ExecuteAsync(this, cancellationToken);
         }
 
-        public Task ReloadServicesAsync(CancellationToken cancellationToken = default)
+        internal override Task<IReadOnlyList<IBleService>> ExecuteGetServicesCommandAsync(CancellationToken cancellationToken = default)
         {
-            if (!_isConnected)
-            {
-                throw new InvalidOperationException($"Device {_address} is not connected. Connect first before getting services.");
-            }
-
             var services = new MacOSGetServicesCommand().Execute(this, cancellationToken);
-            _services = new List<IBleService>(services);
-            Debug.Log($"[macOS BLE] Reloaded {services.Count} services for device {_address}");
-            return Task.CompletedTask;
+            return Task.FromResult<IReadOnlyList<IBleService>>(services);
         }
 
-        public async Task SubscribeToEssentialCharacteristicsAsync(CancellationToken cancellationToken = default)
+        internal override void EndSubscribeCharacteristic()
         {
-            if (!_isConnected)
-            {
-                throw new InvalidOperationException($"Device {_address} is not connected");
-            }
+            MacOSBleNativePlugin.OnCharacteristicValue -= OnCharacteristicValueReceived;
 
-            Debug.Log($"[macOS BLE] Subscribing to essential characteristics for device {_address}");
-
-            try
+            // Clean up auto-subscribed characteristics
+            foreach (var command in _autoSubscribeCommands.Values)
             {
-                // Subscribe to Service Changed characteristic
-                await SubscribeToCharacteristicAsync(GENERIC_ACCESS_SERVICE_UUID, SERVICE_CHANGED_CHARACTERISTIC_UUID, cancellationToken);
-                Debug.Log($"[macOS BLE] Subscribed to Service Changed characteristic");
+                try
+                {
+                    command.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[macOS BLE] Error disposing auto-subscribe command: {ex.Message}");
+                }
             }
-            catch (Exception ex)
-            {
-                Debug.LogWarning($"[macOS BLE] Failed to subscribe to Service Changed: {ex.Message}");
-            }
-
-            // Optionally subscribe to Battery Level if available
-            try
-            {
-                await SubscribeToCharacteristicAsync(BATTERY_SERVICE_UUID, BATTERY_LEVEL_CHARACTERISTIC_UUID, cancellationToken);
-                Debug.Log($"[macOS BLE] Subscribed to Battery Level characteristic");
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning($"[macOS BLE] Battery service not available or failed to subscribe: {ex.Message}");
-            }
+            _autoSubscribeCommands.Clear();
         }
 
-        public async Task SubscribeToCharacteristicAsync(string serviceUuid, string characteristicUuid, CancellationToken cancellationToken = default)
+        internal override async Task AutoSubscribeToCharacteristicAsync(IBleCharacteristic characteristic, CancellationToken cancellationToken = default)
         {
-            if (!_isConnected)
+            if (characteristic == null)
             {
-                throw new InvalidOperationException($"Device {_address} is not connected");
-            }
-
-            var subscriptionKey = $"{serviceUuid}:{characteristicUuid}";
-            
-            if (_subscribeCommands.ContainsKey(subscriptionKey))
-            {
-                Debug.LogWarning($"[macOS BLE] Already subscribed to characteristic {characteristicUuid}");
+                Debug.LogWarning("[macOS BLE] Cannot auto-subscribe to null characteristic");
                 return;
             }
 
-            var subscribeCommand = new MacOSSubscribeCharacteristicCommand(_address, serviceUuid, characteristicUuid);
-            var unsubscribeCommand = new MacOSUnsubscribeCharacteristicCommand(_address, serviceUuid, characteristicUuid);
+            var characteristicKey = characteristic.Uuid;
 
-            await subscribeCommand.ExecuteAsync(data => OnCharacteristicNotificationReceived(serviceUuid, characteristicUuid, data), cancellationToken);
-
-            _subscribeCommands[subscriptionKey] = subscribeCommand;
-            _unsubscribeCommands[subscriptionKey] = unsubscribeCommand;
-
-            Debug.Log($"[macOS BLE] Successfully subscribed to characteristic {characteristicUuid}");
-        }
-
-        public async Task UnsubscribeFromCharacteristicAsync(string serviceUuid, string characteristicUuid, CancellationToken cancellationToken = default)
-        {
-            if (!_isConnected)
+            // Check if already auto-subscribed
+            if (_autoSubscribeCommands.ContainsKey(characteristicKey))
             {
-                throw new InvalidOperationException($"Device {_address} is not connected");
-            }
-
-            var subscriptionKey = $"{serviceUuid}:{characteristicUuid}";
-            
-            if (!_unsubscribeCommands.TryGetValue(subscriptionKey, out var unsubscribeCommand))
-            {
-                Debug.LogWarning($"[macOS BLE] Not subscribed to characteristic {characteristicUuid}");
+                Debug.LogWarning($"[macOS BLE] Already auto-subscribed to characteristic {characteristicKey}");
                 return;
             }
 
-            await unsubscribeCommand.ExecuteAsync(cancellationToken);
+            // Note: Auto-subscribe will work alongside manual subscribe
+            // The native plugin handles multiple subscriptions to the same characteristic gracefully
 
-            // Clean up command references
-            _subscribeCommands.Remove(subscriptionKey);
-            _unsubscribeCommands.Remove(subscriptionKey);
-
-            Debug.Log($"[macOS BLE] Successfully unsubscribed from characteristic {characteristicUuid}");
-        }
-
-        private void OnCharacteristicNotificationReceived(string serviceUuid, string characteristicUuid, byte[] data)
-        {
-            var notification = new BleCharacteristicNotification(serviceUuid, characteristicUuid, data);
-            Events.RaiseCharacteristicNotification(this, notification);
-
-            // Special handling for Service Changed characteristic
-            if (characteristicUuid.Equals(SERVICE_CHANGED_CHARACTERISTIC_UUID, StringComparison.OrdinalIgnoreCase))
+            try
             {
-                Debug.Log($"[macOS BLE] Service Changed notification received from device {_address}");
-                Events.RaiseServicesChanged(this);
-                
-                // Automatically reload services when Service Changed is received
-                _ = Task.Run(async () =>
+                // Find the service UUID for this characteristic
+                string serviceUuid = null;
+                foreach (var service in Services)
                 {
-                    try
+                    var serviceCharacteristics = await service.GetCharacteristicsAsync(cancellationToken);
+                    if (serviceCharacteristics.Any(c => c.Uuid == characteristic.Uuid))
                     {
-                        await Task.Delay(1000); // Brief delay before reloading
-                        await ReloadServicesAsync();
+                        serviceUuid = service.Uuid;
+                        break;
                     }
-                    catch (Exception ex)
-                    {
-                        Debug.LogError($"[macOS BLE] Failed to reload services after Service Changed: {ex.Message}");
-                    }
-                });
+                }
+
+                if (serviceUuid == null)
+                {
+                    Debug.LogError($"[macOS BLE] Could not find service for characteristic {characteristicKey}");
+                    return;
+                }
+
+                // Create and execute subscription command
+                var subscribeCommand = new MacOSSubscribeCharacteristicCommand(Address, serviceUuid, characteristic.Uuid);
+
+                await subscribeCommand.ExecuteAsync(data =>
+                {
+                    // Forward data to the UniversalBleDevice event system
+                    Events.RaiseDataReceived(characteristic.Uuid, data);
+                }, cancellationToken);
+
+                // Store the command for cleanup
+                _autoSubscribeCommands[characteristicKey] = subscribeCommand;
+
+                Debug.Log($"[macOS BLE] Successfully auto-subscribed to characteristic {characteristicKey}");
             }
-        }
-
-        private async Task CleanupSubscriptionsAsync()
-        {
-            Debug.Log($"[macOS BLE] Cleaning up {_subscribeCommands.Count} subscriptions for device {_address}");
-
-            var cleanupTasks = new List<Task>();
-            
-            foreach (var kvp in _unsubscribeCommands.ToList())
+            catch (Exception ex)
             {
-                cleanupTasks.Add(Task.Run(async () =>
-                {
-                    try
-                    {
-                        await kvp.Value.ExecuteAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogWarning($"[macOS BLE] Failed to cleanup subscription {kvp.Key}: {ex.Message}");
-                    }
-                }));
+                Debug.LogError($"[macOS BLE] Failed to auto-subscribe to characteristic {characteristicKey}: {ex.Message}");
+                throw;
             }
-
-            await Task.WhenAll(cleanupTasks);
-            
-            _subscribeCommands.Clear();
-            _unsubscribeCommands.Clear();
-        }
-
-        public override string ToString()
-        {
-            return $"MacOSBleDevice: {_name} ({_address}) RSSI: {_rssi} Connected: {_isConnected}";
         }
     }
 }

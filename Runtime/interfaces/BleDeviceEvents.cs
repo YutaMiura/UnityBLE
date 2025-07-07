@@ -23,8 +23,8 @@ namespace UnityBLE
     {
         public event Action<IBleDevice> OnConnected;
         public event Action<IBleDevice> OnDisconnected;
-        public event Action<IBleDevice, BleCharacteristicNotification> OnCharacteristicNotification;
         public event Action<IBleDevice> OnServicesChanged;
+        public event Action<string, byte[]> OnDataReceived;
 
         internal void RaiseConnected(IBleDevice device)
         {
@@ -36,14 +36,14 @@ namespace UnityBLE
             OnDisconnected?.Invoke(device);
         }
 
-        internal void RaiseCharacteristicNotification(IBleDevice device, BleCharacteristicNotification notification)
-        {
-            OnCharacteristicNotification?.Invoke(device, notification);
-        }
-
         internal void RaiseServicesChanged(IBleDevice device)
         {
             OnServicesChanged?.Invoke(device);
+        }
+
+        internal void RaiseDataReceived(string characteristicUuid, byte[] data)
+        {
+            OnDataReceived?.Invoke(characteristicUuid, data);
         }
     }
 }
