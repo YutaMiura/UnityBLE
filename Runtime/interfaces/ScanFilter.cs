@@ -13,6 +13,8 @@ namespace UnityBLE
             Name = name ?? string.Empty;
         }
 
+        public static ScanFilter None => new();
+
         public bool NoFilter()
         {
             return ServiceUuids.Length == 0 && string.IsNullOrEmpty(Name);

@@ -17,7 +17,7 @@ namespace UnityBLE
                 "00002a27-0000-1000-8000-00805f9b34fb" => "Hardware Revision",
                 "00002a28-0000-1000-8000-00805f9b34fb" => "Software Revision",
                 "00002a29-0000-1000-8000-00805f9b34fb" => "Manufacturer Name",
-                _ => $"Characteristic {uuid.Substring(0, 8)}"
+                _ => $"Characteristic {uuid[..8]}"
             };
         }
     }

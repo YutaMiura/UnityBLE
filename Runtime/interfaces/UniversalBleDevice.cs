@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -7,16 +8,10 @@ using UnityEngine;
 
 namespace UnityBLE
 {
-    public abstract class UniversalBleDevice : IBleDevice
+    public abstract class UniversalBlePeripheral : IBlePeripheral
     {
-        // BLE Standard UUIDs
-        private const string GENERIC_ACCESS_SERVICE_UUID = "00001800-0000-1000-8000-00805f9b34fb";
-        private const string SERVICE_CHANGED_CHARACTERISTIC_UUID = "00002a05-0000-1000-8000-00805f9b34fb";
-        private const string BATTERY_SERVICE_UUID = "0000180f-0000-1000-8000-00805f9b34fb";
-        private const string BATTERY_LEVEL_CHARACTERISTIC_UUID = "00002a19-0000-1000-8000-00805f9b34fb";
-
         public string Name { get; internal set; }
-        public string Address { get; internal set; }
+        public string UUID { get; internal set; }
         public int Rssi { get; internal set; }
         public bool IsConnectable { get; internal set; }
         public int TxPower { get; internal set; }
@@ -24,52 +19,112 @@ namespace UnityBLE
         public bool IsConnected => _isConnected;
 
         private bool _isConnected = false;
-        internal List<IBleService> _services = new List<IBleService>();
+        internal ConcurrentBag<IBleService> _services = new ConcurrentBag<IBleService>();
+
+        public event IBlePeripheral.ConnectionStatusChangedDelegate OnConnectionStatusChanged;
+        public event IBlePeripheral.OnServiceDiscoveredDelegate OnServiceDiscovered;
 
         public IEnumerable<IBleService> Services => _services;
 
-        public BleDeviceEvents Events { get; } = new BleDeviceEvents();
-
-        internal abstract Task<IBleDevice> ExecuteConnectAsync(CancellationToken cancellationToken);
+        internal abstract Task<IBlePeripheral> ExecuteConnectAsync(CancellationToken cancellationToken);
         internal abstract Task<bool> ExecuteDisconnectAsync(CancellationToken cancellationToken);
-        internal abstract Task<IReadOnlyList<IBleService>> ExecuteGetServicesCommandAsync(CancellationToken cancellationToken = default);
 
-        internal abstract void EndSubscribeCharacteristic();
+        protected abstract void DiscoverServices();
 
-        internal abstract Task AutoSubscribeToCharacteristicAsync(IBleCharacteristic characteristic, CancellationToken cancellationToken = default);
+        protected UniversalBlePeripheral()
+        {
+            Debug.Log($"[UnityBLE] Initializing UniversalBlePeripheral for {UUID}");
+            BleDeviceEvents.OnConnected += OnConnected;
+            BleDeviceEvents.OnDisconnected += OnDisconnected;
+            BleDeviceEvents.OnServicesDiscovered += OnServiceDiscoveredHandler;
+        }
 
         public async Task ConnectAsync(CancellationToken cancellationToken = default)
         {
+
             if (_isConnected)
             {
-                Debug.Log($"[UnityBLE] Device {Address} is already connected");
+                Debug.Log($"[UnityBLE] Device {UUID} is already connected");
                 return;
             }
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            var device = await ExecuteConnectAsync(cancellationToken);
-            if (device == null)
+            try
             {
-                Debug.LogError($"[UnityBLE] Failed to connect to device {Address}");
-                throw new InvalidOperationException($"Failed to connect to device {Address}");
+                var device = await ExecuteConnectAsync(cancellationToken);
+                if (device == null)
+                {
+                    Debug.LogError($"[UnityBLE] Failed to connect to device {UUID}");
+                    throw new InvalidOperationException($"Failed to connect to device {UUID}");
+                }
+
+                // Update connection state immediately after successful connection
+                // Note: For iOS, the connection state may already be set by the native callback handler
+                if (!_isConnected)
+                {
+                    _isConnected = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                // Ensure connection state is false if connection fails
+                _isConnected = false;
+                _services.Clear();
+                Debug.LogError($"[UnityBLE] Connection failed for device {UUID}: {ex.Message}");
+                throw;
+            }
+        }
+
+        private void OnDisconnected(string deviceUuid)
+        {
+            if (deviceUuid != UUID)
+            {
+                Debug.LogWarning($"Disconnected device UUID {deviceUuid} does not match current device UUID {UUID}");
+                return;
+            }
+            _isConnected = false;
+            Debug.Log($"[UnityBLE] Device {UUID} connection state updated: {_isConnected}");
+            OnConnectionStatusChanged?.Invoke(this, _isConnected);
+        }
+
+        private void OnConnected(IBlePeripheral device)
+        {
+            Debug.Log($"[UnityBLE] Device {device.UUID} connected");
+            if (device.UUID != UUID)
+            {
+                Debug.LogWarning($"[UnityBLE] Connected device UUID {device.UUID} does not match this device UUID {UUID}, ignoring.");
+                return;
             }
 
-            _services = device.Services.ToList();
             _isConnected = true;
+            Debug.Log($"[UnityBLE] Device {UUID} connection state updated: {_isConnected}");
+            OnConnectionStatusChanged?.Invoke(this, _isConnected);
+            DiscoverServices();
+        }
 
-            // Automatically discover services and subscribe to notification-capable characteristics
-            await DiscoverServicesAndAutoSubscribeAsync(cancellationToken);
+        private void OnServiceDiscoveredHandler(IBleService service)
+        {
+            if (service.PeripheralUUID != UUID)
+            {
+                Debug.LogWarning($"[UnityBLE] Service {service.Uuid} does not belong to device {UUID}, skipping.");
+                return;
+            }
 
-            Events.RaiseConnected(this);
-            Debug.Log($"[UnityBLE] Device {Address} connected successfully");
+            if (_services.Any(s => s.Uuid == service.Uuid))
+            {
+                Debug.LogWarning($"[UnityBLE] Service {service.Uuid} already exists for device {UUID}, skipping.");
+                return;
+            }
+            _services.Add(service);
+            OnServiceDiscovered?.Invoke(service);
         }
 
         public async Task DisconnectAsync(CancellationToken cancellationToken = default)
         {
             if (!_isConnected)
             {
-                Debug.Log($"[UnityBLE] Device {Address} is not connected");
+                Debug.Log($"[UnityBLE] Device {UUID} is not connected");
                 return;
             }
 
@@ -78,131 +133,32 @@ namespace UnityBLE
             if (await ExecuteDisconnectAsync(cancellationToken))
             {
                 _isConnected = false;
-                _services.Clear();
-                Events.RaiseDisconnected(this);
-                EndSubscribeCharacteristic();
-                Debug.Log($"[UnityBLE] Device {Address} disconnected successfully");
-            }
-        }
-
-        public async Task ReloadServicesAsync(CancellationToken cancellationToken = default)
-        {
-            if (!_isConnected)
-            {
-                throw new InvalidOperationException($"Device {Address} is not connected. Connect first before getting services.");
-            }
-
-            var services = await ExecuteGetServicesCommandAsync(cancellationToken);
-            _services = new List<IBleService>(services);
-            Debug.Log($"[UnityBLE] Reloaded {services.Count} services for device {Address}");
-        }
-
-        internal void OnCharacteristicValueReceived(string characteristicJson, string valueHex)
-        {
-            Debug.Log($"[UnityBLE] Characteristic value received: {characteristicJson} with value {valueHex}");
-            // Convert hex string back to byte array
-            byte[] data = Array.Empty<byte>();
-            if (!string.IsNullOrEmpty(valueHex))
-            {
-                data = HexStringToByteArray(valueHex);
-            }
-
-            // If this is a notification and we're subscribed
-            var characteristicUUID = "";
-            if (characteristicUUID.Equals(SERVICE_CHANGED_CHARACTERISTIC_UUID))
-            {
-                ReloadServicesAsync().ContinueWith(t =>
-                {
-                    if (t.IsFaulted)
-                    {
-                        Debug.LogError($"[UnitBLE] Failed to reload services after Service Changed: {t.Exception?.Message}");
-                    }
-                    else
-                    {
-                        Debug.Log($"[UnitBLE] Successfully reloaded services after Service Changed");
-                        Events.RaiseServicesChanged(this);
-                    }
-                }, TaskScheduler.Current);
-            }
-            else
-            {
-                Events.RaiseDataReceived(characteristicUUID, data);
-            }
-        }
-
-        private static byte[] HexStringToByteArray(string hex)
-        {
-            if (string.IsNullOrEmpty(hex) || hex.Length % 2 != 0)
-                return new byte[0];
-
-            byte[] bytes = new byte[hex.Length / 2];
-            for (int i = 0; i < hex.Length; i += 2)
-            {
-                bytes[i / 2] = Convert.ToByte(hex.Substring(i, 2), 16);
-            }
-            return bytes;
-        }
-
-        private async Task DiscoverServicesAndAutoSubscribeAsync(CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                Debug.Log($"[UnityBLE] Starting automatic service discovery and subscription for device {Address}");
-
-                // Reload services to ensure we have the latest service list
-                await ReloadServicesAsync(cancellationToken);
-
-                // Collect all notification-capable characteristics
-                var notificationCharacteristics = new List<IBleCharacteristic>();
-
                 foreach (var service in _services)
                 {
-                    try
-                    {
-                        // Get characteristics for this service
-                        var characteristics = await service.GetCharacteristicsAsync(cancellationToken);
-
-                        // Find characteristics that support notifications
-                        foreach (var characteristic in characteristics)
-                        {
-                            if (characteristic.CanNotify)
-                            {
-                                notificationCharacteristics.Add(characteristic);
-                                Debug.Log($"[UnityBLE] Found notification-capable characteristic: {characteristic.Uuid} in service {service.Uuid}");
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogWarning($"[UnityBLE] Failed to get characteristics for service {service.Uuid}: {ex.Message}");
-                    }
+                    service.Dispose();
                 }
-
-                // Subscribe to all notification-capable characteristics
-                foreach (var characteristic in notificationCharacteristics)
-                {
-                    try
-                    {
-                        await AutoSubscribeToCharacteristicAsync(characteristic, cancellationToken);
-                        Debug.Log($"[UnityBLE] Auto-subscribed to characteristic: {characteristic.Uuid}");
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.LogWarning($"[UnityBLE] Failed to auto-subscribe to characteristic {characteristic.Uuid}: {ex.Message}");
-                    }
-                }
-
-                Debug.Log($"[UnityBLE] Automatic subscription completed. Subscribed to {notificationCharacteristics.Count} characteristics");
+                _services.Clear();
+                BleDeviceEvents.OnServicesDiscovered -= OnServiceDiscoveredHandler;
+                Debug.Log($"[UnityBLE] Device {UUID} disconnected successfully");
             }
-            catch (Exception ex)
-            {
-                Debug.LogError($"[UnityBLE] Error during automatic service discovery and subscription: {ex.Message}");
-            }
+        }
+
+
+        internal void OnCharacteristicValueReceived(string chracteristicUUID, string data)
+        {
+            Debug.Log($"{data} received from {chracteristicUUID}");
         }
 
         public override string ToString()
         {
-            return $"Peripheral: {Name} ({Address}) RSSI: {Rssi} Connected: {IsConnected}";
+            return $"Peripheral: {Name} ({UUID}) RSSI: {Rssi} Connected: {IsConnected}";
+        }
+
+        public void Dispose()
+        {
+            BleDeviceEvents.OnServicesDiscovered -= OnServiceDiscoveredHandler;
+            BleDeviceEvents.OnConnected -= OnConnected;
+            BleDeviceEvents.OnDisconnected -= OnDisconnected;
         }
     }
 }

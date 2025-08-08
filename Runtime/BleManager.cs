@@ -1,7 +1,5 @@
-#if UNITY_EDITOR_OSX
-using UnityBLE.macOS;
-#elif !UNITY_EDITOR && UNITY_IOS
-using UnityBLE.iOS;
+#if UNITY_EDITOR_OSX || UNITY_IOS
+using UnityBLE.apple;
 #elif !UNITY_EDITOR && UNITY_ANDROID
 using UnityBLE.Android;
 #else
@@ -17,26 +15,12 @@ namespace UnityBLE
 
         public readonly IBleScanner Scanner;
 
-        public IBleDevice ConnectedDevice { get; private set; }
-
-        internal void SaveConnectedDevice(IBleDevice device)
-        {
-            ConnectedDevice = device;
-        }
-
-        internal void DisconnectDevice()
-        {
-            ConnectedDevice = null;
-        }
-
         private BleManager()
         {
 #if UNITY_ANDROID && !UNITY_EDITOR
             Scanner = new AndroidBleScanner();
-#elif UNITY_IOS && !UNITY_EDITOR
-            Scanner = new iOSBleScanner();
-#elif UNITY_EDITOR_OSX
-            Scanner = new MacOSBleScanner();
+#elif UNITY_EDITOR_OSX || UNITY_IOS
+            Scanner = new AppleBleScanner();
 #elif UNITY_EDITOR_64
             throw new NotSupportedException("BleManager is not supported in Windows Unity Editor.");
 #else

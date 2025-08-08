@@ -2,48 +2,57 @@ using System;
 
 namespace UnityBLE
 {
-    /// <summary>
-    /// Represents notification data from a characteristic.
-    /// </summary>
-    public class BleCharacteristicNotification
+    internal static class BleDeviceEvents
     {
-        public string ServiceUuid { get; }
-        public string CharacteristicUuid { get; }
-        public byte[] Data { get; }
+        public static event Action<IBlePeripheral> OnConnected;
+        public delegate void DisconnectedDelegate(string deviceUuid);
+        public static event DisconnectedDelegate OnDisconnected;
+        public static event Action<IBleService> OnServicesDiscovered;
+        public delegate void DataReceivedDelegate(string characteristicUuid, string data);
+        public static event DataReceivedDelegate OnDataReceived;
 
-        public BleCharacteristicNotification(string serviceUuid, string characteristicUuid, byte[] data)
-        {
-            ServiceUuid = serviceUuid;
-            CharacteristicUuid = characteristicUuid;
-            Data = data;
-        }
-    }
+        public delegate void ReadRSSICompletedDelegate(int rssi);
 
-    public class BleDeviceEvents
-    {
-        public event Action<IBleDevice> OnConnected;
-        public event Action<IBleDevice> OnDisconnected;
-        public event Action<IBleDevice> OnServicesChanged;
-        public event Action<string, byte[]> OnDataReceived;
+        public static event ReadRSSICompletedDelegate OnReadRSSICompleted;
 
-        internal void RaiseConnected(IBleDevice device)
+        public static event Action<IBleCharacteristic> OnCharacteristicDiscovered;
+
+        public delegate void WriteOperationCompletedDelegate(string characteristicUuid, bool success);
+        public static event WriteOperationCompletedDelegate OnWriteOperationCompleted;
+
+        internal static void InvokeConnected(IBlePeripheral device)
         {
             OnConnected?.Invoke(device);
         }
 
-        internal void RaiseDisconnected(IBleDevice device)
+        internal static void InvokeDisconnected(string deviceUuid)
         {
-            OnDisconnected?.Invoke(device);
+            OnDisconnected?.Invoke(deviceUuid);
         }
 
-        internal void RaiseServicesChanged(IBleDevice device)
+        internal static void InvokeServicesDiscovered(IBleService service)
         {
-            OnServicesChanged?.Invoke(device);
+            OnServicesDiscovered?.Invoke(service);
         }
 
-        internal void RaiseDataReceived(string characteristicUuid, byte[] data)
+        internal static void InvokeDataReceived(string characteristicUuid, string data)
         {
             OnDataReceived?.Invoke(characteristicUuid, data);
+        }
+
+        internal static void InvokeReadRSSICompleted(int rssi)
+        {
+            OnReadRSSICompleted?.Invoke(rssi);
+        }
+
+        internal static void InvokeWriteOperationCompleted(string characteristicUuid, bool success)
+        {
+            OnWriteOperationCompleted?.Invoke(characteristicUuid, success);
+        }
+
+        internal static void InvokeCharacteristicDiscovered(IBleCharacteristic characteristic)
+        {
+            OnCharacteristicDiscovered?.Invoke(characteristic);
         }
     }
 }

@@ -5,13 +5,13 @@ namespace UnityBLE
 {
     public interface IBleScanner
     {
-        public BleScanEvents Events { get; }
-
         Task InitializeAsync();
 
-        void StartScan(TimeSpan duration);
-
-        void StartScan(TimeSpan duration, ScanFilter filter);
+        void StartScan(
+            BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered);
+        void StartScan(
+            ScanFilter filter,
+            BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered);
         bool StopScan();
 
     }
