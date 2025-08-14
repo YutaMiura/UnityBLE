@@ -29,9 +29,14 @@ start-issue https://github.com/owner/repo/issues/123
 1. Parse issue number or URL from arguments
 2. Fetch issue information using `gh api` command
 3. Analyze issue content and labels for implementation requirements
+   1. You should read all comments too.
 4. Identify related files
 5. Generate prioritized TODO list
-6. Confirm implementation start
+6. Show me what will do.
+7. You **MUST** breakdown todo list to where is the target to modify on code.
+8. Generate list where will be modify on code then show me a list.
+9.  Confirm implementation start
+10. If confirmed, you can start implementation.
 
 ## Implementation Logic
 
