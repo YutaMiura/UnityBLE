@@ -31,7 +31,8 @@ namespace UnityBLE.apple
             if (_disposed)
                 throw new ObjectDisposedException(nameof(AppleSubscribeCharacteristicCommand));
 
-            lock(_lock) {
+            lock (_lock)
+            {
                 if (_isSubscribed)
                 {
                     Debug.LogWarning($"Already subscribed to characteristic {_characteristicUuid}");
@@ -64,7 +65,8 @@ namespace UnityBLE.apple
                 {
                     return;
                 }
-                lock(_lock) {
+                lock (_lock)
+                {
                     if (_isSubscribed && _notificationCallback != null)
                     {
                         _notificationCallback.Invoke(valueHex);
@@ -82,7 +84,8 @@ namespace UnityBLE.apple
 
         public void Dispose()
         {
-            lock(_lock) {
+            lock (_lock)
+            {
                 if (!_disposed)
                 {
                     if (_isSubscribed)
@@ -91,16 +94,15 @@ namespace UnityBLE.apple
                         try
                         {
                             AppleBleNativePlugin.UnsubscribeCharacteristic(_deviceAddress, _serviceUuid, _characteristicUuid);
+                            BleDeviceEvents.OnDataReceived -= OnCharacteristicValueReceived;
+                            _isSubscribed = false;
+                            _disposed = true;
                         }
                         catch (Exception ex)
                         {
                             Debug.LogWarning($"Error during cleanup unsubscribe: {ex.Message}");
                         }
                     }
-
-                    BleDeviceEvents.OnDataReceived -= OnCharacteristicValueReceived;
-                    _isSubscribed = false;
-                    _disposed = true;
                 }
             }
 

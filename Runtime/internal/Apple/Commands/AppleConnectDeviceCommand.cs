@@ -31,6 +31,7 @@ namespace UnityBLE.apple
             {
                 AppleBleNativePlugin.StopScan();
                 Debug.Log($" Connecting to device {_targetDevice.UUID}...");
+                BleDeviceEvents.OnConnected += OnDeviceConnected;
 
                 // Start native connection
                 AppleBleNativePlugin.ConnectToDevice(_targetDevice.UUID);
@@ -49,7 +50,13 @@ namespace UnityBLE.apple
         private void OnDeviceConnected(IBlePeripheral device)
         {
             Debug.Log($" Device connected: {_targetDevice.UUID}");
+            if (device.UUID != _targetDevice.UUID)
+            {
+                Debug.LogWarning($" Connected device UUID mismatch: expected {_targetDevice.UUID}, got {device.UUID}");
+                return;
+            }
             _connectionCompletionSource.TrySetResult(device);
+            BleDeviceEvents.OnConnected -= OnDeviceConnected;
         }
     }
 }

@@ -24,7 +24,7 @@ namespace UnityBLE
             serviceUUID = serviceUuid ?? throw new ArgumentNullException(nameof(serviceUuid));
             peripheralUUID = peripheralUuid ?? throw new ArgumentNullException(nameof(peripheralUuid));
             Properties = properties;
-            _subscribeCommand = new AppleSubscribeCharacteristicCommand(peripheralUUID, serviceUUID, Uuid, OnDataReceivedHandler);
+            _subscribeCommand = new AppleSubscribeCharacteristicCommand(peripheralUUID, serviceUUID, Uuid, OnDataReceived);
         }
 
         public async Task<byte[]> ReadAsync(CancellationToken cancellationToken = default)
@@ -86,13 +86,7 @@ namespace UnityBLE
             _subscribeCommand.Execute();
         }
 
-        private void OnDataReceivedHandler(string data)
-        {
-            Debug.Log($"Data received for characteristic {Uuid}: {data}");
-            OnDataReceived?.Invoke(data);
-        }
-
-        public void Unsubscribe()
+        public Task UnsubscribeAsync()
         {
             if (!Properties.CanNotify())
             {
@@ -102,13 +96,14 @@ namespace UnityBLE
             if (_subscribeCommand == null || !_subscribeCommand.IsSubscribed)
             {
                 Debug.LogWarning($" Not subscribed to characteristic ({Uuid})");
-                return;
+                return Task.CompletedTask;
             }
 
             var unsubscribeCommand = new AppleUnsubscribeCharacteristicCommand(peripheralUUID, serviceUUID, Uuid);
             try
             {
                 unsubscribeCommand.Execute();
+                return Task.CompletedTask;
             }
             finally
             {
@@ -126,7 +121,7 @@ namespace UnityBLE
             return $"MacOSBleCharacteristic: ({Uuid}) Properties: {Properties}";
         }
 
-        public static AppleBleCharacteristic FromDTO(CharacteristicDTO dto)
+        internal static AppleBleCharacteristic FromDTO(CharacteristicDTO dto)
         {
             var properties = CharacteristicProperties.None;
             if (dto.isReadable)

@@ -19,5 +19,10 @@ namespace UnityBLE
         {
             return ServiceUuids.Length == 0 && string.IsNullOrEmpty(Name);
         }
+
+        public override string ToString()
+        {
+            return $"ScanFilter(Name: {Name}, ServiceUuids: [{string.Join(", ", ServiceUuids)}])";
+        }
     }
 }

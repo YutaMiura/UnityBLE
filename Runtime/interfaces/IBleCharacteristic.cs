@@ -55,6 +55,6 @@ namespace UnityBLE
         /// Unsubscribe from notifications for this characteristic.
         /// </summary>
         /// <param name="cancellationToken">Token to cancel the unsubscription operation</param>
-        void Unsubscribe();
+        Task UnsubscribeAsync();
     }
 }

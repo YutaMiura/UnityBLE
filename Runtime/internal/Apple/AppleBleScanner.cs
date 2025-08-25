@@ -31,12 +31,32 @@ namespace UnityBLE.apple
             return _initializeCommand.ExecuteAsync();
         }
 
-        public bool StopScan()
+        public Task StartScan(BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered)
+        {
+            return StartScan(
+                ScanFilter.None,
+                OnDeviceDiscovered);
+        }
+
+        public Task StartScan(ScanFilter filter, BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered)
+        {
+            if (_receiver != null)
+            {
+                _receiver.Stop();
+                _receiver = null;
+            }
+            _receiver = new DeviceDiscoverReceiver(OnDeviceDiscovered);
+            _receiver.Start();
+            _scanCommand.Execute(filter);
+            return Task.CompletedTask;
+        }
+
+        public Task<bool> StopScan()
         {
             if (!AppleBleNativePlugin.IsScanning())
             {
                 Debug.LogWarning("[UnityBLE] No scan in progress to stop.");
-                return false;
+                return Task.FromResult(false);
             }
             var result = _stopCommand.Execute();
             if (result)
@@ -47,29 +67,7 @@ namespace UnityBLE.apple
                     _receiver = null;
                 }
             }
-            return result;
-        }
-
-        public void StartScan(
-            BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered)
-        {
-            StartScan(
-                ScanFilter.None,
-                OnDeviceDiscovered);
-        }
-
-        public void StartScan(
-            ScanFilter filter,
-            BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered)
-        {
-            if (_receiver != null)
-            {
-                _receiver.Stop();
-                _receiver = null;
-            }
-            _receiver = new DeviceDiscoverReceiver(OnDeviceDiscovered);
-            _receiver.Start();
-            _scanCommand.Execute(filter);
+            return Task.FromResult(result);
         }
 
         private class DeviceDiscoverReceiver

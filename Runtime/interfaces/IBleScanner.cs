@@ -7,12 +7,12 @@ namespace UnityBLE
     {
         Task InitializeAsync();
 
-        void StartScan(
+        Task StartScan(
             BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered);
-        void StartScan(
+        Task StartScan(
             ScanFilter filter,
             BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered);
-        bool StopScan();
+        Task<bool> StopScan();
 
     }
 }

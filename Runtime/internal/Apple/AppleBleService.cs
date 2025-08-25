@@ -11,10 +11,8 @@ namespace UnityBLE.apple
     public class AppleBleService : IBleService
     {
         private readonly string _peripheralUUID;
-        private readonly string _description;
         private readonly string _uuid;
 
-        public string Description => _description;
         public string Uuid => _uuid;
         public string PeripheralUUID => _peripheralUUID;
         public IEnumerable<IBleCharacteristic> Characteristics => _characteristics;
@@ -23,12 +21,12 @@ namespace UnityBLE.apple
 
         public event IBleService.CharacteristicDiscoveredDelegate OnCharacteristicDiscovered;
 
-        public AppleBleService(string description, string uuid, string peripheralUUID, IBleCharacteristic[] characteristics = null)
+        public AppleBleService(string uuid, string peripheralUUID, IBleCharacteristic[] characteristics = null)
         {
             _peripheralUUID = peripheralUUID;
-            _description = description;
             _uuid = uuid;
-            if(_characteristics != null) {
+            if (_characteristics != null)
+            {
                 _characteristics = new List<IBleCharacteristic>(characteristics);
             }
 
@@ -53,15 +51,15 @@ namespace UnityBLE.apple
             }
         }
 
-        public static AppleBleService FromDTO(ServiceDTO dto)
+        internal static AppleBleService FromDTO(ServiceDTO dto)
         {
-            return new AppleBleService(dto.description, dto.uuid, dto.peripheralUUID, dto.characteristics?.Select(c => AppleBleCharacteristic.FromDTO(c)).ToArray() ?? Array.Empty<IBleCharacteristic>());
+            return new AppleBleService(dto.uuid, dto.peripheralUUID, dto.characteristics?.Select(c => AppleBleCharacteristic.FromDTO(c)).ToArray() ?? Array.Empty<IBleCharacteristic>());
         }
 
 
         public override string ToString()
         {
-            return $"MacOSBleService: {_description} ({_uuid})";
+            return $"AppleBleService: ({_uuid})";
         }
 
         public void Dispose()

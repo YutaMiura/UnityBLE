@@ -9,7 +9,7 @@ namespace UnityBLE.apple
     /// </summary>
     public class AppleBlePeripheral : UniversalBlePeripheral
     {
-        public AppleBlePeripheral(PeripheralDTO dto)
+        internal AppleBlePeripheral(PeripheralDTO dto)
         {
             Name = dto.name ?? "Unknown Device";
             UUID = dto.uuid ?? "00:00:00:00:00:00";
