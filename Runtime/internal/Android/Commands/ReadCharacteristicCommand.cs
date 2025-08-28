@@ -14,7 +14,7 @@ namespace UnityBLE.Android
             _characteristic = characteristic ?? throw new ArgumentNullException(nameof(characteristic));
         }
 
-        public async Task<byte[]> ExecuteAsync()
+        public async Task<string> ExecuteAsync()
         {
             return await _plugin.ReadAsync(_characteristic);
         }

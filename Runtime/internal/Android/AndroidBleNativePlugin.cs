@@ -106,19 +106,24 @@ namespace UnityBLE.Android
             BleManagerInstance.Call(METHOD_NAME_DISCOVERY_SERVICES, device.UUID);
         }
 
-        public Task<byte[]> ReadAsync(IBleCharacteristic characteristic)
+        public Task<string> ReadAsync(IBleCharacteristic characteristic)
         {
-            TaskCompletionSource<byte[]> task = new();
+            TaskCompletionSource<string> task = new();
             eventReceiver.listener.OnReadResult += OnReadResult;
-            BleManagerInstance.Call(METHOD_NAME_READ, characteristic.Uuid, characteristic.serviceUUID, characteristic.peripheralUUID);
+            var result = BleManagerInstance.Call<int>(METHOD_NAME_READ, characteristic.Uuid, characteristic.serviceUUID, characteristic.peripheralUUID);
+
+            if (result != 0)
+            {
+                task.TrySetException(new Exception($"Failed to read characteristic {characteristic.Uuid} of peripheral {characteristic.peripheralUUID}, error code: {result}"));
+            }
 
             return task.Task;
 
-            void OnReadResult(string from, int status, byte[] data)
+            void OnReadResult(string from, int status, string data)
             {
-                if (from != characteristic.peripheralUUID)
+                if (from != characteristic.Uuid)
                 {
-                    Debug.LogWarning($"Read result from unexpected peripheral: {from}, expected: {characteristic.peripheralUUID}");
+                    Debug.LogWarning($"Read result from unexpected characteristic: {from}, expected: {characteristic.Uuid}");
                     return;
                 }
                 if (status == 0)
@@ -161,14 +166,44 @@ namespace UnityBLE.Android
         }
         public void Subscribe(string characteristicUuid, string serviceUuid, string peripheralUuid)
         {
-            BleManagerInstance.Call(METHOD_NAME_SUBSCRIBE, characteristicUuid, serviceUuid, peripheralUuid);
+            if (string.IsNullOrEmpty(characteristicUuid) || string.IsNullOrEmpty(serviceUuid) || string.IsNullOrEmpty(peripheralUuid))
+            {
+                throw new ArgumentException($"characteristicUuid, serviceUuid, and peripheralUuid must be non-empty {characteristicUuid} {serviceUuid} {peripheralUuid}");
+            }
+            var result = BleManagerInstance.Call<int>(METHOD_NAME_SUBSCRIBE, characteristicUuid, serviceUuid, peripheralUuid);
+            if (result == 0)
+            {
+                return;
+            }
+            else if (result == 2)
+            {
+                throw new NotSupportedException($"Failed to subscribe to characteristic {characteristicUuid} of peripheral {peripheralUuid}, error code: {result}");
+            }
+            else
+            {
+                throw new Exception($"Failed to subscribe to characteristic {characteristicUuid} of peripheral {peripheralUuid}, error code: {result}");
+            }
         }
 
         public Task UnsubscribeAsync(string characteristicUuid, string serviceUuid, string peripheralUuid)
         {
+            if (string.IsNullOrEmpty(characteristicUuid) || string.IsNullOrEmpty(serviceUuid) || string.IsNullOrEmpty(peripheralUuid))
+            {
+                throw new ArgumentException($"characteristicUuid, serviceUuid, and peripheralUuid must be non-empty {characteristicUuid} {serviceUuid} {peripheralUuid}");
+            }
             TaskCompletionSource<int> task = new();
             eventReceiver.listener.OnUnsubscribeResult += OnUnsubscribeResult;
-            BleManagerInstance.Call(METHOD_NAME_UNSUBSCRIBE, characteristicUuid, serviceUuid, peripheralUuid);
+            var result = BleManagerInstance.Call<int>(METHOD_NAME_UNSUBSCRIBE, characteristicUuid, serviceUuid, peripheralUuid);
+
+            if (result == 2)
+            {
+                task.TrySetException(new NotSupportedException($"Failed to subscribe to characteristic {characteristicUuid} of peripheral {peripheralUuid}, error code: {result}"));
+            }
+            else if (result != 0)
+            {
+                task.TrySetException(new Exception($"Failed to unsubscribe to characteristic {characteristicUuid} of peripheral {peripheralUuid}, error code: {result}"));
+            }
+
 
             return task.Task;
 

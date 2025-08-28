@@ -16,9 +16,18 @@ namespace UnityBLE.Android
 
         private readonly SubscribeCommand _subscribeCommand;
 
-        private AndroidBleCharacteristic()
+        private AndroidBleCharacteristic(string uuid, string serviceUUID, string peripheralUUID, CharacteristicProperties properties)
         {
-            _subscribeCommand = NativeFacade.Instance.CreateSubscribeCommand(this, OnDataReceived);
+            Uuid = uuid;
+            this.serviceUUID = serviceUUID;
+            this.peripheralUUID = peripheralUUID;
+            Properties = properties;
+            _subscribeCommand = NativeFacade.Instance.CreateSubscribeCommand(this, OnCharacteristicValueReceived);
+        }
+
+        private void OnCharacteristicValueReceived(string data)
+        {
+            OnDataReceived?.Invoke(data);
         }
 
         internal static AndroidBleCharacteristic FromDTO(CharacteristicDTO dto)
@@ -43,15 +52,15 @@ namespace UnityBLE.Android
             }
 
             return new AndroidBleCharacteristic
-            {
-                Uuid = dto.uuid,
-                serviceUUID = dto.serviceUUID,
-                peripheralUUID = dto.peripheralUUID,
-                Properties = properties
-            };
+            (
+                dto.uuid,
+                dto.serviceUUID,
+                dto.peripheralUUID,
+                properties
+            );
         }
 
-        public Task<byte[]> ReadAsync(CancellationToken cancellationToken = default)
+        public Task<string> ReadAsync(CancellationToken cancellationToken = default)
         {
             return NativeFacade.Instance.ReadAsync(this);
         }
@@ -72,7 +81,7 @@ namespace UnityBLE.Android
             _subscribeCommand.Execute();
         }
 
-        public Task UnsubscribeAsync()
+        public async Task UnsubscribeAsync()
         {
             if (!Properties.CanNotify())
             {
@@ -82,15 +91,20 @@ namespace UnityBLE.Android
             if (_subscribeCommand == null || !_subscribeCommand.IsSubscribed)
             {
                 Debug.LogWarning($" Not subscribed to characteristic ({Uuid})");
-                return Task.CompletedTask;
+                return;
             }
 
-            return NativeFacade.Instance.UnsubscribeAsync(this);
+            await _subscribeCommand?.UnsubscribeAsync();
         }
 
         public Task WriteAsync(byte[] data, CancellationToken cancellationToken = default)
         {
             return NativeFacade.Instance.WriteAsync(this, data);
+        }
+
+        public override string ToString()
+        {
+            return $"AndroidBleCharacteristic: ({Uuid} serviceUUID:{serviceUUID} peripheralUUID:{peripheralUUID}) Properties: {Properties}";
         }
 
         public void Dispose()

@@ -27,7 +27,7 @@ namespace UnityBLE
             _subscribeCommand = new AppleSubscribeCharacteristicCommand(peripheralUUID, serviceUUID, Uuid, OnDataReceived);
         }
 
-        public async Task<byte[]> ReadAsync(CancellationToken cancellationToken = default)
+        public async Task<string> ReadAsync(CancellationToken cancellationToken = default)
         {
             if (!Properties.CanRead())
             {

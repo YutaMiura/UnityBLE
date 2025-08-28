@@ -19,12 +19,12 @@ namespace UnityBLE
         public bool IsConnected => _isConnected;
 
         private bool _isConnected = false;
-        internal ConcurrentBag<IBleService> _services = new ConcurrentBag<IBleService>();
+        internal ConcurrentDictionary<string, IBleService> _services = new();
 
         public event IBlePeripheral.ConnectionStatusChangedDelegate OnConnectionStatusChanged;
         public event IBlePeripheral.OnServiceDiscoveredDelegate OnServiceDiscovered;
 
-        public IEnumerable<IBleService> Services => _services;
+        public IEnumerable<IBleService> Services => _services.Values;
 
         internal abstract Task<IBlePeripheral> ExecuteConnectAsync(CancellationToken cancellationToken);
         internal abstract Task<bool> ExecuteDisconnectAsync(CancellationToken cancellationToken);
@@ -34,9 +34,6 @@ namespace UnityBLE
         protected UniversalBlePeripheral()
         {
             Debug.Log($"[UnityBLE] Initializing UniversalBlePeripheral for {UUID}");
-            BleDeviceEvents.OnConnected += OnConnected;
-            BleDeviceEvents.OnDisconnected += OnDisconnected;
-            BleDeviceEvents.OnServicesDiscovered += OnServiceDiscoveredHandler;
         }
 
         public async Task ConnectAsync(CancellationToken cancellationToken = default)
@@ -52,6 +49,9 @@ namespace UnityBLE
 
             try
             {
+                BleDeviceEvents.OnConnected += OnConnected;
+                BleDeviceEvents.OnDisconnected += OnDisconnected;
+                BleDeviceEvents.OnServicesDiscovered += OnServiceDiscoveredHandler;
                 var device = await ExecuteConnectAsync(cancellationToken);
                 if (device == null)
                 {
@@ -111,13 +111,15 @@ namespace UnityBLE
                 return;
             }
 
-            if (_services.Any(s => s.Uuid == service.Uuid))
+            if (_services.TryAdd(service.Uuid, service))
+            {
+                Debug.Log($"[UnityBLE] Discovered {service}");
+                OnServiceDiscovered?.Invoke(service);
+            }
+            else
             {
                 Debug.LogWarning($"[UnityBLE] Service {service.Uuid} already exists for device {UUID}, skipping.");
-                return;
             }
-            _services.Add(service);
-            OnServiceDiscovered?.Invoke(service);
         }
 
         public async Task DisconnectAsync(CancellationToken cancellationToken = default)
@@ -133,20 +135,16 @@ namespace UnityBLE
             if (await ExecuteDisconnectAsync(cancellationToken))
             {
                 _isConnected = false;
-                foreach (var service in _services)
+                foreach (var service in _services.Values)
                 {
                     service.Dispose();
                 }
                 _services.Clear();
                 BleDeviceEvents.OnServicesDiscovered -= OnServiceDiscoveredHandler;
+                BleDeviceEvents.OnConnected -= OnConnected;
+                BleDeviceEvents.OnDisconnected -= OnDisconnected;
                 Debug.Log($"[UnityBLE] Device {UUID} disconnected successfully");
             }
-        }
-
-
-        internal void OnCharacteristicValueReceived(string chracteristicUUID, string data)
-        {
-            Debug.Log($"{data} received from {chracteristicUUID}");
         }
 
         public override string ToString()

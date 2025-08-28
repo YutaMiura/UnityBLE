@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace UnityBLE.Android
 {
-    public class SubscribeCommand : IDisposable
+    public class SubscribeCommand
     {
         private readonly string _characteristicUuid;
         private readonly string _serviceUuid;
@@ -67,8 +67,10 @@ namespace UnityBLE.Android
         {
             try
             {
+                Debug.Log($"Data received for characteristic {from}: {data}");
                 if (from != _characteristicUuid)
                 {
+                    Debug.LogWarning($"Received data for other characteristic {from}, we expected {_characteristicUuid} so skipped.");
                     return;
                 }
                 lock (_lock)
@@ -76,7 +78,6 @@ namespace UnityBLE.Android
                     if (_isSubscribed && _notificationCallback != null)
                     {
                         _notificationCallback.Invoke(data);
-                        Debug.Log($"Data received for characteristic {_characteristicUuid}: {data}");
                     }
                 }
             }
@@ -86,16 +87,13 @@ namespace UnityBLE.Android
             }
         }
 
-        public async void Dispose()
+        public async Task UnsubscribeAsync()
         {
-            lock (_lock)
+            if (_disposed) return;
+            if (!_isSubscribed)
             {
-                if (_disposed) return;
-                if (!_isSubscribed)
-                {
-                    _disposed = true;
-                    return;
-                }
+                _disposed = true;
+                return;
             }
 
             try

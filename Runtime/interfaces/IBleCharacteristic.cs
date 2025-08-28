@@ -36,7 +36,7 @@ namespace UnityBLE
         /// Read data from this characteristic.
         /// </summary>
         /// <param name="cancellationToken">Token to cancel the read operation</param>
-        Task<byte[]> ReadAsync(CancellationToken cancellationToken = default);
+        Task<string> ReadAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Write data to this characteristic.

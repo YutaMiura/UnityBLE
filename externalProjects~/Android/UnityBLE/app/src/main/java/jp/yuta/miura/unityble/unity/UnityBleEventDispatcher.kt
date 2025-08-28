@@ -21,6 +21,7 @@ class UnityBleEventDispatcher {
         private const val GAME_OBJ_NAME = "AndroidBleEventListener"
         private const val METHOD_NAME_ON_FOUND_DEVICE = "OnDeviceDiscovered"
         private const val METHOD_NAME_ON_CONNECTED_DEVICE = "OnConnected"
+        private const val METHOD_NAME_ON_DISCONNECTED_DEVICE = "OnDisconnected"
         private const val METHOD_NAME_SCAN_RESULT = "OnScanResult"
         private const val METHOD_NAME_STOP_SCAN_RESULT = "OnStopScanResult"
         private const val METHOD_NAME_CONNECT_RESULT = "OnConnectResult"
@@ -103,6 +104,14 @@ class UnityBleEventDispatcher {
         val str = Json.encodeToString(serializer<BleDeviceDTO>(), dto)
         handler.post{
             UnityFacade.sendToUnity(GAME_OBJ_NAME, METHOD_NAME_ON_CONNECTED_DEVICE, str)
+        }
+    }
+
+    fun notifyOnDisconnectDevice(device: BluetoothGatt) {
+        val dto = device.toDto(-70)
+        val str = Json.encodeToString(serializer<BleDeviceDTO>(), dto)
+        handler.post{
+            UnityFacade.sendToUnity(GAME_OBJ_NAME, METHOD_NAME_ON_DISCONNECTED_DEVICE, str)
         }
     }
     

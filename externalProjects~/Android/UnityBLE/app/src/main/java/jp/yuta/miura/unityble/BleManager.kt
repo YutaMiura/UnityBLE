@@ -7,8 +7,10 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattDescriptor
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothProfile
+import android.bluetooth.BluetoothStatusCodes
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
@@ -23,6 +25,7 @@ import jp.yuta.miura.unityble.unity.UnityLogger
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
+
 class BleManager private constructor(private val activity: Activity) {
     private val bleManager : BluetoothManager = activity.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     private val bleAdapter : BluetoothAdapter? = bleManager.adapter
@@ -36,6 +39,8 @@ class BleManager private constructor(private val activity: Activity) {
         val instance: BleManager by lazy {
             BleManager(UnityPlayer.currentActivity)
         }
+
+        val CCCD: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
     }
 
     @SuppressLint("MissingPermission")
@@ -65,6 +70,8 @@ class BleManager private constructor(private val activity: Activity) {
             when (result) {
                 PermissionService.PermissionResult.ReadyForUse -> {
                     try {
+                        foundDevices.clear() // Clear discovered devices when stopping scan
+                        unityEventDispatcher.notifyOnClearFoundDevices()
                         if(filters.isEmpty()) {
                             UnityLogger.d("Start scan. with no filter.")
                             bleAdapter?.bluetoothLeScanner?.startScan(scanCallback)
@@ -110,8 +117,6 @@ class BleManager private constructor(private val activity: Activity) {
             when(result) {
                 PermissionService.PermissionResult.ReadyForUse -> {
                     bleAdapter?.bluetoothLeScanner?.stopScan(scanCallback)
-                    foundDevices.clear() // Clear discovered devices when stopping scan
-                    unityEventDispatcher.notifyOnClearFoundDevices()
                     unityEventDispatcher.notifyResultForInvokeStopScan(UnityBleEventDispatcher.ScanResult.OK)
                 }
                 PermissionService.PermissionResult.LocationServiceDisabled -> {
@@ -315,11 +320,57 @@ class BleManager private constructor(private val activity: Activity) {
         permissionService.ensurePermissionsWithResult(permissionService.requiredPermissionsForConnect()
         ) {
                 result ->
+            UnityLogger.d("Check permission for subscribe:$result.")
             when(result) {
                 PermissionService.PermissionResult.ReadyForUse -> {
+                    UnityLogger.d("Start subscribe for $characteristicUUID")
                     val success = gatt.setCharacteristicNotification(char, true)
                     if(!success) {
                         unityEventDispatcher.notifyOnSubscribe(from = char, value = "", result = UnityBleEventDispatcher.SubscribeResult.UNKNOWN)
+                        UnityLogger.d("Start subscribe for $characteristicUUID failed.")
+                    } else {
+                        UnityLogger.d("Found descriptors ${char.descriptors.joinToString { it.uuid.toString()} } for $characteristicUUID")
+                        val descriptor = char.getDescriptor(CCCD)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            when (gatt.writeDescriptor(descriptor, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)) {
+
+                                BluetoothStatusCodes.ERROR_GATT_WRITE_NOT_ALLOWED -> {
+                                    UnityLogger.d("Write ${BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE} to descriptor failed. cause NOT_ALLOWED")
+                                }
+
+                                BluetoothStatusCodes.ERROR_GATT_WRITE_REQUEST_BUSY -> {
+                                    UnityLogger.d("Write ${BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE} to descriptor failed. cause BUSY")
+                                }
+
+                                BluetoothStatusCodes.ERROR_MISSING_BLUETOOTH_CONNECT_PERMISSION -> {
+                                    UnityLogger.d("Write ${BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE} to descriptor failed. cause MISSING_PERMISSION")
+                                }
+
+                                BluetoothStatusCodes.ERROR_PROFILE_SERVICE_NOT_BOUND -> {
+                                    UnityLogger.d("Write ${BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE} to descriptor failed. cause SERVICE_NOT_BOUND")
+                                }
+
+                                BluetoothStatusCodes.ERROR_UNKNOWN -> {
+                                    UnityLogger.d("Write ${BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE} to descriptor failed. cause UNKNOWN")
+                                }
+
+                                BluetoothStatusCodes.SUCCESS -> {
+                                    UnityLogger.d("Write ${BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE} to descriptor succeed.")
+                                }
+                            }
+                        } else {
+                            if ((char.properties and BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0) {
+                                descriptor.value = BluetoothGattDescriptor.ENABLE_INDICATION_VALUE
+                            } else {
+                                descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
+                            }
+                            if(gatt.writeDescriptor(descriptor)) {
+                                UnityLogger.d("Write ${BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE} to descriptor succeed.")
+                            } else {
+                                UnityLogger.d("Write ${BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE} to descriptor failed.")
+                            }
+                        }
+                        UnityLogger.d("Start subscribe for $characteristicUUID succeed.")
                     }
                 }
                 PermissionService.PermissionResult.LocationServiceDisabled -> {
@@ -366,6 +417,14 @@ class BleManager private constructor(private val activity: Activity) {
                     val success = gatt.setCharacteristicNotification(char, false)
                     if(!success) {
                         unityEventDispatcher.notifyOnUnSubscribe(from = char, result = UnityBleEventDispatcher.SubscribeResult.UNKNOWN)
+                    } else {
+                        val descriptor = char.getDescriptor(CCCD)
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            gatt.writeDescriptor(descriptor, BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE)
+                        } else {
+                            descriptor.value = BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE
+                            gatt.writeDescriptor(descriptor)
+                        }
                     }
                 }
                 PermissionService.PermissionResult.LocationServiceDisabled -> {
@@ -450,6 +509,7 @@ class BleManager private constructor(private val activity: Activity) {
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     connectedDevices[gatt.device.address]?.close()
                     connectedDevices.remove(gatt.device.address)
+                    unityEventDispatcher.notifyOnDisconnectDevice(gatt)
                 }
             }
         }
@@ -471,12 +531,41 @@ class BleManager private constructor(private val activity: Activity) {
             }
         }
 
+        @Deprecated("Deprecated in API level 33. but we supports API level less than 33.")
+        override fun onCharacteristicRead(
+            gatt: BluetoothGatt?,
+            characteristic: BluetoothGattCharacteristic?,
+            status: Int
+        ) {
+            if(gatt == null) return
+            if(characteristic == null) return
+            UnityLogger.d("onCharacteristicRead(less than 33) from:${characteristic.uuid} value:${characteristic.value.toBase64String()}, status:$status")
+            if (status == BluetoothGatt.GATT_SUCCESS) {
+                unityEventDispatcher.notifyOnRead(characteristic, characteristic.value.toBase64String(), UnityBleEventDispatcher.ReadResult.OK)
+            } else {
+                UnityLogger.e("Read failed from ${characteristic.uuid} status:$status")
+                unityEventDispatcher.notifyOnRead(characteristic, characteristic.value.toBase64String(), UnityBleEventDispatcher.ReadResult.UNKNOWN)
+            }
+        }
+
+        @Deprecated("Deprecated in API level 33. but we supports API level less than 33.")
+        override fun onCharacteristicChanged(
+            gatt: BluetoothGatt?,
+            characteristic: BluetoothGattCharacteristic?
+        ) {
+            if(gatt == null)return
+            if(characteristic == null)return
+            UnityLogger.d("onCharacteristicChanged(less than 33) from:${characteristic.uuid} value:${characteristic.value.toBase64String()}")
+            unityEventDispatcher.notifyOnSubscribe(characteristic, characteristic.value.toBase64String(), UnityBleEventDispatcher.SubscribeResult.OK)
+        }
+
         override fun onCharacteristicRead(
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray,
             status: Int
         ) {
+            UnityLogger.d("onCharacteristicRead from:${characteristic.uuid} value:${value.toBase64String()}, status:$status")
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 unityEventDispatcher.notifyOnRead(characteristic, value.toBase64String(), UnityBleEventDispatcher.ReadResult.OK)
             } else {
@@ -490,7 +579,28 @@ class BleManager private constructor(private val activity: Activity) {
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray
         ) {
+            UnityLogger.d("onCharacteristicChanged from:${characteristic.uuid} value:${value.toBase64String()}")
             unityEventDispatcher.notifyOnSubscribe(characteristic, value.toBase64String(), UnityBleEventDispatcher.SubscribeResult.OK)
+        }
+
+        override fun onDescriptorWrite(
+            gatt: BluetoothGatt?,
+            descriptor: BluetoothGattDescriptor?,
+            status: Int
+        ) {
+            if(gatt == null) return
+            if(descriptor == null) return
+            UnityLogger.d("onDescriptorWrite to ${gatt.device.address} descriptor: ${descriptor.uuid} status:$status")
+        }
+
+        override fun onCharacteristicWrite(
+            gatt: BluetoothGatt?,
+            characteristic: BluetoothGattCharacteristic?,
+            status: Int
+        ) {
+            if(gatt == null) return
+            if(characteristic == null)return
+            UnityLogger.d("onCharacteristicWrite to ${gatt.device.address} char:${characteristic.uuid} status:$status")
         }
     }
 }

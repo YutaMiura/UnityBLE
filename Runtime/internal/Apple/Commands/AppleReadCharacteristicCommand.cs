@@ -10,7 +10,7 @@ namespace UnityBLE.apple
         private readonly string _deviceAddress;
         private readonly string _serviceUuid;
         private readonly string _characteristicUuid;
-        private TaskCompletionSource<byte[]> _completionSource;
+        private TaskCompletionSource<string> _completionSource;
         private bool _disposed;
 
         public AppleReadCharacteristicCommand(string deviceAddress, string serviceUuid, string characteristicUuid)
@@ -20,7 +20,7 @@ namespace UnityBLE.apple
             _characteristicUuid = characteristicUuid ?? throw new ArgumentNullException(nameof(characteristicUuid));
         }
 
-        public async Task<byte[]> ExecuteAsync(CancellationToken cancellationToken = default)
+        public async Task<string> ExecuteAsync(CancellationToken cancellationToken = default)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(AppleReadCharacteristicCommand));
@@ -30,7 +30,7 @@ namespace UnityBLE.apple
             try
             {
                 // Set up completion source for async operation
-                _completionSource = new TaskCompletionSource<byte[]>();
+                _completionSource = new TaskCompletionSource<string>();
 
                 // Subscribe to characteristic value callbacks temporarily
                 BleDeviceEvents.OnDataReceived += OnCharacteristicValueReceived;
@@ -68,13 +68,15 @@ namespace UnityBLE.apple
                 return;
             }
             // Convert hex string back to byte array
-            byte[] data = new byte[0];
+            byte[] bytes = new byte[0];
             if (!string.IsNullOrEmpty(valueHex))
             {
-                data = HexStringToByteArray(valueHex);
+                bytes = HexStringToByteArray(valueHex);
             }
 
-            _completionSource?.TrySetResult(data);
+            var str = System.Text.Encoding.UTF8.GetString(bytes);
+
+            _completionSource?.TrySetResult(str);
         }
 
         private static byte[] HexStringToByteArray(string hex)

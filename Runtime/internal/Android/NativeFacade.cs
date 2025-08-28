@@ -1,6 +1,5 @@
-using System;
-using System.Threading;
 using System.Threading.Tasks;
+using UnityEngine;
 
 namespace UnityBLE.Android
 {
@@ -80,7 +79,7 @@ namespace UnityBLE.Android
             return command.ExecuteAsync();
         }
 
-        public Task<byte[]> ReadAsync(AndroidBleCharacteristic characteristic)
+        public Task<string> ReadAsync(AndroidBleCharacteristic characteristic)
         {
             var command = new ReadCharacteristicCommand(characteristic, Plugin);
             return command.ExecuteAsync();
@@ -94,6 +93,7 @@ namespace UnityBLE.Android
 
         public SubscribeCommand CreateSubscribeCommand(AndroidBleCharacteristic characteristic, IBleCharacteristic.DataReceivedDelegate onDataReceived)
         {
+            Debug.Log($"Creating SubscribeCommand for characteristic {characteristic}");
             return new SubscribeCommand(characteristic.Uuid, characteristic.serviceUUID, characteristic.peripheralUUID, Plugin, onDataReceived);
         }
 

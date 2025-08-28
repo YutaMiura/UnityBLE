@@ -15,9 +15,19 @@ namespace UnityBLE.Android
 
         public Task<bool> ExecuteAsync()
         {
-            // Start native disconnection
+            var t = new TaskCompletionSource<bool>();
+            BleDeviceEvents.OnDisconnected += OnDisconnected;
             _plugin.Disconnect(_targetDevice);
-            return Task.FromResult(true);
+            return t.Task;
+
+            void OnDisconnected(string deviceUuid)
+            {
+                if (deviceUuid == _targetDevice.UUID)
+                {
+                    BleDeviceEvents.OnDisconnected -= OnDisconnected;
+                    t.SetResult(true);
+                }
+            }
         }
     }
 }

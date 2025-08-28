@@ -16,20 +16,20 @@ namespace UnityBLE.Android
             _targetDevice = targetDevice;
         }
 
-        public Task<IBlePeripheral> ExecuteAsync()
+        public async Task<IBlePeripheral> ExecuteAsync()
         {
             if (_targetDevice == null)
             {
                 throw new ArgumentException("Target device is not set.", nameof(_targetDevice));
             }
 
+            await NativeFacade.Instance.StopScanAsync();
+
             // Register event handler for connection
             BleDeviceEvents.OnConnected += OnDeviceConnected;
-
             // Start native connection
             _plugin.Connect(_targetDevice);
-
-            return _connectionCompletionSource.Task;
+            return await _connectionCompletionSource.Task;
         }
 
         private void OnDeviceConnected(IBlePeripheral device)

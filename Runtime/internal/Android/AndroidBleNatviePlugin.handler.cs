@@ -95,7 +95,7 @@ namespace UnityBLE.Android
                 public event Action<int> OnConnectResult;
                 public event Action<int> OnDiscoveryServiceResult;
 
-                public delegate void ReadOperationResultDelegate(string from, int status, byte[] data);
+                public delegate void ReadOperationResultDelegate(string from, int status, string data);
 
                 public event ReadOperationResultDelegate OnReadResult;
 
@@ -126,7 +126,7 @@ namespace UnityBLE.Android
                     OnDiscoveryServiceResult?.Invoke(code);
                 }
 
-                internal void InvokeReadResult(string from, int status, byte[] data)
+                internal void InvokeReadResult(string from, int status, string data)
                 {
                     OnReadResult?.Invoke(from, status, data);
                 }
@@ -187,14 +187,23 @@ namespace UnityBLE.Android
                 }
             }
 
+            public void OnDisconnected(string deviceJson)
+            {
+                var dto = JsonUtility.FromJson<PeripheralDTO>(deviceJson);
+                Debug.Log($"Device {dto.uuid} disconnected.");
+                BleDeviceEvents.InvokeDisconnected(dto.uuid);
+            }
+
             public void OnServiceDiscovered(string serviceJson)
             {
+                Debug.Log($"Service discovered: {serviceJson}");
                 ServiceDTO dto = JsonUtility.FromJson<ServiceDTO>(serviceJson);
                 var service = AndroidBleService.FromDTO(dto);
                 BleDeviceEvents.InvokeServicesDiscovered(service);
 
                 foreach (var characteristic in service.Characteristics)
                 {
+                    Debug.Log($"Characteristic discovered: {characteristic}");
                     BleDeviceEvents.InvokeCharacteristicDiscovered(characteristic);
                 }
             }
@@ -205,7 +214,9 @@ namespace UnityBLE.Android
                 if (dto.status == 0)
                 {
                     var data = Convert.FromBase64String(dto.value);
-                    listener.InvokeReadResult(dto.from, dto.status, data);
+                    byte[] bytes = Convert.FromBase64String(dto.value);
+                    var str = System.Text.Encoding.UTF8.GetString(bytes);
+                    listener.InvokeReadResult(dto.from, dto.status, str);
                 }
                 else
                 {
@@ -224,7 +235,9 @@ namespace UnityBLE.Android
                 var dto = JsonUtility.FromJson<SubscribeResponseDTO>(subscribeResponseJson);
                 if (dto.status == 0)
                 {
-                    BleDeviceEvents.InvokeDataReceived(dto.from, dto.value);
+                    byte[] bytes = Convert.FromBase64String(dto.value);
+                    var str = System.Text.Encoding.UTF8.GetString(bytes);
+                    BleDeviceEvents.InvokeDataReceived(dto.from, str);
                 }
                 else
                 {
