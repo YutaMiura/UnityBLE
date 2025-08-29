@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Text;
 using AOT;
 using UnityBLE.apple;
 using UnityEngine;
@@ -239,7 +240,9 @@ namespace UnityBLE
         private static void OnDataReceived(string peripheralUuid, string data)
         {
             Debug.Log($"[AppleBleNativePlugin] Data received from {peripheralUuid}: {data}");
-            BleDeviceEvents.InvokeDataReceived(peripheralUuid, data);
+            var bytes = Convert.FromBase64String(data);
+            var encodedStr = Encoding.ASCII.GetString(bytes);
+            BleDeviceEvents.InvokeDataReceived(peripheralUuid, encodedStr);
         }
 
         public static bool IsInitialized { get; private set; } = false;

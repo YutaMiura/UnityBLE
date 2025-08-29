@@ -24,7 +24,12 @@ namespace UnityBLE
             serviceUUID = serviceUuid ?? throw new ArgumentNullException(nameof(serviceUuid));
             peripheralUUID = peripheralUuid ?? throw new ArgumentNullException(nameof(peripheralUuid));
             Properties = properties;
-            _subscribeCommand = new AppleSubscribeCharacteristicCommand(peripheralUUID, serviceUUID, Uuid, OnDataReceived);
+            _subscribeCommand = new AppleSubscribeCharacteristicCommand(peripheralUUID, serviceUUID, Uuid, OnDataReceivedHandler);
+        }
+
+        private void OnDataReceivedHandler(string data)
+        {
+            OnDataReceived?.Invoke(data);
         }
 
         public async Task<string> ReadAsync(CancellationToken cancellationToken = default)

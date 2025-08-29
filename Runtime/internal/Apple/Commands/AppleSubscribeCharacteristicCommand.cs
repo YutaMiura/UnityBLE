@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using UnityEngine;
 
 namespace UnityBLE.apple
@@ -57,7 +58,7 @@ namespace UnityBLE.apple
             }
         }
 
-        private void OnCharacteristicValueReceived(string fromCharacteristicUUID, string valueHex)
+        private void OnCharacteristicValueReceived(string fromCharacteristicUUID, string data)
         {
             try
             {
@@ -69,8 +70,8 @@ namespace UnityBLE.apple
                 {
                     if (_isSubscribed && _notificationCallback != null)
                     {
-                        _notificationCallback.Invoke(valueHex);
-                        Debug.Log($"Received notification for {_characteristicUuid}: {valueHex}");
+                        _notificationCallback.Invoke(data);
+                        Debug.Log($"Received notification for {_characteristicUuid}: {data}");
                     }
                 }
             }

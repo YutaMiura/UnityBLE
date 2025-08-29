@@ -61,22 +61,14 @@ namespace UnityBLE.apple
             }
         }
 
-        private void OnCharacteristicValueReceived(string characteristicUuid, string valueHex)
+        private void OnCharacteristicValueReceived(string characteristicUuid, string data)
         {
             if (_characteristicUuid != characteristicUuid)
             {
                 return;
             }
-            // Convert hex string back to byte array
-            byte[] bytes = new byte[0];
-            if (!string.IsNullOrEmpty(valueHex))
-            {
-                bytes = HexStringToByteArray(valueHex);
-            }
 
-            var str = System.Text.Encoding.UTF8.GetString(bytes);
-
-            _completionSource?.TrySetResult(str);
+            _completionSource?.TrySetResult(data);
         }
 
         private static byte[] HexStringToByteArray(string hex)

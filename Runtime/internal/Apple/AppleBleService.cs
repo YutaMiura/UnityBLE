@@ -44,11 +44,6 @@ namespace UnityBLE.apple
             }
             _characteristics.Add(characteristic);
             OnCharacteristicDiscovered?.Invoke(characteristic);
-            if (characteristic.CanNotify)
-            {
-                Debug.Log($"Subscribing to notifications for characteristic {characteristic.Uuid}");
-                characteristic.Subscribe();
-            }
         }
 
         internal static AppleBleService FromDTO(ServiceDTO dto)
