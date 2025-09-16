@@ -32,7 +32,8 @@ int UnityBLE_ReadCharacteristic(const char *peripheralUUID,
 int UnityBLE_WriteCharacteristic(const char *peripheralUUID,
                                  const char *serviceUUID,
                                  const char *characteristicUUID,
-                                 const char *data);
+                                 const unsigned char *data,
+                                 int length);
 int UnityBLE_SubscribeToCharacteristic(const char *peripheralUUID,
                                        const char *serviceUUID,
                                        const char *characteristicUUID);

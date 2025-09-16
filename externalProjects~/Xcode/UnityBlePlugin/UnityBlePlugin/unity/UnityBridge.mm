@@ -73,7 +73,8 @@ int UnityBLE_ReadCharacteristic(const char *peripheralUUID,
 int UnityBLE_WriteCharacteristic(const char *peripheralUUID,
                                  const char *serviceUUID,
                                  const char *characteristicUUID,
-                                 const char *data) {
+                                 const unsigned char *data,
+                                 int length) {
   NSString *peripheralUuidString =
       [NSString stringWithUTF8String:peripheralUUID];
   NSString *serviceUuidString = [NSString stringWithUTF8String:serviceUUID];
@@ -84,15 +85,8 @@ int UnityBLE_WriteCharacteristic(const char *peripheralUUID,
   CBUUID *serviceUuid = [CBUUID UUIDWithString:serviceUuidString];
   CBUUID *characteristicUuid = [CBUUID UUIDWithString:characteristicUuidString];
 
-  NSString *dataHexStr = [NSString stringWithUTF8String:data];
-
-  // Convert hex string to NSData
-  NSMutableData *d = [[NSMutableData alloc] init];
-  for (NSUInteger i = 0; i < dataHexStr.length; i += 2) {
-    NSString *hexByte = [dataHexStr substringWithRange:NSMakeRange(i, 2)];
-    unsigned char byte = (unsigned char)strtol([hexByte UTF8String], NULL, 16);
-    [d appendBytes:&byte length:1];
-  }
+  // data passed as byte array from Unity; build NSData directly for speed
+  NSData *d = [NSData dataWithBytes:data length:(length > 0 ? (NSUInteger)length : 0)];
 
   return (int)[[UnityBridgeFacade shared] writeValue:d
                                     toCharacteristic:characteristicUuid

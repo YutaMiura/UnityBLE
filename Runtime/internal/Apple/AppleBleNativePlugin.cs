@@ -55,7 +55,7 @@ namespace UnityBLE
         private static extern int UnityBLE_ReadCharacteristic(string peripheralUUID, string serviceUUID, string characteristicUUID);
 
         [DllImport("__Internal")]
-        private static extern int UnityBLE_WriteCharacteristic(string peripheralUUID, string serviceUUID, string characteristicUUID, byte[] data);
+        private static extern int UnityBLE_WriteCharacteristic(string peripheralUUID, string serviceUUID, string characteristicUUID, byte[] data, int length);
 
         [DllImport("__Internal")]
         private static extern int UnityBLE_SubscribeToCharacteristic(string peripheralUUID, string serviceUUID, string characteristicUUID);
@@ -448,7 +448,7 @@ namespace UnityBLE
                 throw new InvalidOperationException("Plugin not initialized. Call Initialize() first.");
             }
 
-            var result = UnityBLE_WriteCharacteristic(address, serviceUUID, characteristicUUID, data);
+            var result = UnityBLE_WriteCharacteristic(address, serviceUUID, characteristicUUID, data, data?.Length ?? 0);
             if (result != 0)
             {
                 Debug.LogError($"Failed to write characteristic {characteristicUUID} to service {serviceUUID} on device {address}. Error code: {result}");

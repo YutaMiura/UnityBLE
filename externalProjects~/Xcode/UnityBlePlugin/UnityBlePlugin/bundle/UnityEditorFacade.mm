@@ -24,9 +24,10 @@ int UnityBLEBundle_ReadCharacteristic(const char *peripheralUUID,
 int UnityBLEBundle_WriteCharacteristic(const char *peripheralUUID,
                                        const char *serviceUUID,
                                        const char *characteristicUUID,
-                                       const char *data) {
+                                       const unsigned char *data,
+                                       int length) {
   return UnityBLE_WriteCharacteristic(peripheralUUID, serviceUUID,
-                                      characteristicUUID, data);
+                                      characteristicUUID, data, length);
 }
 
 int UnityBLEBundle_SubscribeToCharacteristic(const char *peripheralUUID,
