@@ -32,8 +32,7 @@ int UnityBLE_ReadCharacteristic(const char *peripheralUUID,
 int UnityBLE_WriteCharacteristic(const char *peripheralUUID,
                                  const char *serviceUUID,
                                  const char *characteristicUUID,
-                                 const unsigned char *data,
-                                 int length);
+                                 const unsigned char *data, int length);
 int UnityBLE_SubscribeToCharacteristic(const char *peripheralUUID,
                                        const char *serviceUUID,
                                        const char *characteristicUUID);
@@ -61,6 +60,7 @@ void UnityBLE_registerOnWriteCharacteristicCompleted(
     OnWriteCharacteristicCompletedCallback callback);
 void UnityBLE_registerOnReadRSSICompleted(OnReadRSSICompletedCallback callback);
 void UnityBLE_registerOnValueReceived(OnValueReceivedCallback callback);
+int UnityBLE_discoverServices(const char *peripheralUUID);
 
 #ifdef __cplusplus
 }

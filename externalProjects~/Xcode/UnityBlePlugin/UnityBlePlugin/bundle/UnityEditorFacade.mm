@@ -14,6 +14,10 @@ int UnityBLEBundle_DisconnectFromPeripheral(const char *peripheralUUID) {
 
 bool UnityBLEBundle_IsScanning() { return UnityBLE_IsScanning(); }
 
+int UnityBLEBundle_ConnectToPeripheral(const char *peripheralUUID) {
+  return UnityBLE_ConnectToPeripheral(peripheralUUID);
+}
+
 int UnityBLEBundle_ReadCharacteristic(const char *peripheralUUID,
                                       const char *serviceUUID,
                                       const char *characteristicUUID) {
@@ -59,6 +63,10 @@ void UnityBLEBundle_registerOnPeripheralDisconnected(
   UnityBLE_registerOnPeripheralDisconnected(callback);
 }
 
+void UnityBLEBundle_registerOnBleErrorDetected(OnBleErrorCallback callback) {
+  UnityBLE_registerOnBleErrorDetected(callback);
+}
+
 void UnityBLEBundle_registerOnBleStateChanged(
     OnBleStateChangedCallback callback) {
   UnityBLE_registerOnBleStateChanged(callback);
@@ -95,4 +103,8 @@ void UnityBLEBundle_registerOnReadRSSICompleted(
 
 void UnityBLEBundle_registerOnValueReceived(OnValueReceivedCallback callback) {
   UnityBLE_registerOnValueReceived(callback);
+}
+
+int UnityBLEBundle_discoverServices(const char *peripheralUUID) {
+  return UnityBLE_discoverServices(peripheralUUID);
 }
