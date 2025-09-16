@@ -52,14 +52,8 @@ namespace UnityBLE
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "IsScanning")]
         private static extern bool UnityBLE_IsScanning();
 
-#if UNITY_EDITOR_OSX
-        // Fallback to the underlying symbol if the bundle wrapper is not present in the prebuilt binary
-        [DllImport(PluginName, EntryPoint = "UnityBLE_ConnectToPeripheral")]
-        private static extern int UnityBLE_ConnectToPeripheral(string peripheralUUID);
-#else
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "ConnectToPeripheral")]
         private static extern int UnityBLE_ConnectToPeripheral(string peripheralUUID);
-#endif
 
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "DisconnectFromPeripheral")]
         private static extern int UnityBLE_DisconnectFromPeripheral(string peripheralUUID);
@@ -85,14 +79,8 @@ namespace UnityBLE
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "registerOnPeripheralDisconnected")]
         private static extern void UnityBLE_registerOnPeripheralDisconnected(OnDisconnectedDelegate callback);
 
-#if UNITY_EDITOR_OSX
-        // Fallback to the underlying symbol if the bundle wrapper is not present
-        [DllImport(PluginName, EntryPoint = "UnityBLE_registerOnBleErrorDetected")]
-        private static extern void UnityBLE_registerOnBleErrorDetected(OnBleErrorDelegate callback);
-#else
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "registerOnBleErrorDetected")]
         private static extern void UnityBLE_registerOnBleErrorDetected(OnBleErrorDelegate callback);
-#endif
 
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "registerOnBleStateChanged")]
         private static extern void UnityBLE_registerOnBleStateChanged(OnBleStatusChangedDelegate callback);
@@ -118,14 +106,8 @@ namespace UnityBLE
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "registerOnValueReceived")]
         private static extern void UnityBLE_registerOnValueReceived(OnDataReceivedDelegate callback);
 
-#if UNITY_EDITOR_OSX
-        // Fallback to the underlying symbol if the bundle wrapper is not present in the prebuilt binary
-        [DllImport(PluginName, EntryPoint = "UnityBLE_discoverServices")]
-        private static extern int UnityBLE_discoverServices(string peripheralUUID);
-#else
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "discoverServices")]
         private static extern int UnityBLE_discoverServices(string peripheralUUID);
-#endif
 
         // Static callback methods (must be static for AOT)
         [MonoPInvokeCallback(typeof(OnPeripheralFoundDelegate))]
