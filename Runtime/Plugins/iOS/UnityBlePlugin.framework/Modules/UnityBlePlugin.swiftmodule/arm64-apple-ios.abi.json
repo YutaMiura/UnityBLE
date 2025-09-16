@@ -19,1107 +19,6 @@
         "moduleName": "UnityBlePlugin"
       },
       {
-        "kind": "Import",
-        "name": "Foundation",
-        "printedName": "Foundation",
-        "declKind": "Import",
-        "moduleName": "UnityBlePlugin"
-      },
-      {
-        "kind": "Import",
-        "name": "CoreBluetooth",
-        "printedName": "CoreBluetooth",
-        "declKind": "Import",
-        "moduleName": "UnityBlePlugin"
-      },
-      {
-        "kind": "Import",
-        "name": "Foundation",
-        "printedName": "Foundation",
-        "declKind": "Import",
-        "moduleName": "UnityBlePlugin"
-      },
-      {
-        "kind": "Import",
-        "name": "CoreBluetooth",
-        "printedName": "CoreBluetooth",
-        "declKind": "Import",
-        "moduleName": "UnityBlePlugin"
-      },
-      {
-        "kind": "Import",
-        "name": "Foundation",
-        "printedName": "Foundation",
-        "declKind": "Import",
-        "moduleName": "UnityBlePlugin"
-      },
-      {
-        "kind": "Import",
-        "name": "Foundation",
-        "printedName": "Foundation",
-        "declKind": "Import",
-        "moduleName": "UnityBlePlugin"
-      },
-      {
-        "kind": "Import",
-        "name": "CoreBluetooth",
-        "printedName": "CoreBluetooth",
-        "declKind": "Import",
-        "moduleName": "UnityBlePlugin"
-      },
-      {
-        "kind": "Import",
-        "name": "Foundation",
-        "printedName": "Foundation",
-        "declKind": "Import",
-        "moduleName": "UnityBlePlugin"
-      },
-      {
-        "kind": "Import",
-        "name": "CoreBluetooth",
-        "printedName": "CoreBluetooth",
-        "declKind": "Import",
-        "moduleName": "UnityBlePlugin"
-      },
-      {
-        "kind": "Import",
-        "name": "Foundation",
-        "printedName": "Foundation",
-        "declKind": "Import",
-        "moduleName": "UnityBlePlugin"
-      },
-      {
-        "kind": "Import",
-        "name": "CoreBluetooth",
-        "printedName": "CoreBluetooth",
-        "declKind": "Import",
-        "moduleName": "UnityBlePlugin"
-      },
-      {
-        "kind": "TypeDecl",
-        "name": "UnityBridgeFacade",
-        "printedName": "UnityBridgeFacade",
-        "children": [
-          {
-            "kind": "Var",
-            "name": "shared",
-            "printedName": "shared",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "UnityBridgeFacade",
-                "printedName": "UnityBlePlugin.UnityBridgeFacade",
-                "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade"
-              }
-            ],
-            "declKind": "Var",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(cpy)shared",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC6sharedACvpZ",
-            "moduleName": "UnityBlePlugin",
-            "static": true,
-            "declAttributes": [
-              "HasInitialValue",
-              "Final",
-              "HasStorage",
-              "AccessControl",
-              "ObjC"
-            ],
-            "isLet": true,
-            "hasStorage": true,
-            "accessors": [
-              {
-                "kind": "Accessor",
-                "name": "Get",
-                "printedName": "Get()",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "UnityBridgeFacade",
-                    "printedName": "UnityBlePlugin.UnityBridgeFacade",
-                    "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade"
-                  }
-                ],
-                "declKind": "Accessor",
-                "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(cm)shared",
-                "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC6sharedACvgZ",
-                "moduleName": "UnityBlePlugin",
-                "static": true,
-                "implicit": true,
-                "declAttributes": [
-                  "Final",
-                  "ObjC"
-                ],
-                "accessorKind": "get"
-              }
-            ]
-          },
-          {
-            "kind": "Function",
-            "name": "isScanning",
-            "printedName": "isScanning()",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Bool",
-                "printedName": "Swift.Bool",
-                "usr": "s:Sb"
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)isScanning",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC10isScanningSbyF",
-            "moduleName": "UnityBlePlugin",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "startScanning",
-            "printedName": "startScanning(for:nameFilter:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Int",
-                "printedName": "Swift.Int",
-                "usr": "s:Si"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "Optional",
-                "printedName": "[CoreBluetooth.CBUUID]?",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Array",
-                    "printedName": "[CoreBluetooth.CBUUID]",
-                    "children": [
-                      {
-                        "kind": "TypeNominal",
-                        "name": "CBUUID",
-                        "printedName": "CoreBluetooth.CBUUID",
-                        "usr": "c:objc(cs)CBUUID"
-                      }
-                    ],
-                    "usr": "s:Sa"
-                  }
-                ],
-                "usr": "s:Sq"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "Optional",
-                "printedName": "Swift.String?",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "String",
-                    "printedName": "Swift.String",
-                    "usr": "s:SS"
-                  }
-                ],
-                "hasDefaultArg": true,
-                "usr": "s:Sq"
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)startScanningFor:nameFilter:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC13startScanning3for10nameFilterSiSaySo6CBUUIDCGSg_SSSgtF",
-            "moduleName": "UnityBlePlugin",
-            "objc_name": "startScanningFor:nameFilter:",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "stopScanning",
-            "printedName": "stopScanning()",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Void",
-                "printedName": "()"
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)stopScanning",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC12stopScanningyyF",
-            "moduleName": "UnityBlePlugin",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "connectToPeripheral",
-            "printedName": "connectToPeripheral(withUUID:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Int",
-                "printedName": "Swift.Int",
-                "usr": "s:Si"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "UUID",
-                "printedName": "Foundation.UUID",
-                "usr": "s:10Foundation4UUIDV"
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)connectToPeripheralWithUUID:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC19connectToPeripheral8withUUIDSi10Foundation0J0V_tF",
-            "moduleName": "UnityBlePlugin",
-            "objc_name": "connectToPeripheralWithUUID:",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "disconnectFromPeripheral",
-            "printedName": "disconnectFromPeripheral(withUUID:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Int",
-                "printedName": "Swift.Int",
-                "usr": "s:Si"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "UUID",
-                "printedName": "Foundation.UUID",
-                "usr": "s:10Foundation4UUIDV"
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)disconnectFromPeripheralWithUUID:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC24disconnectFromPeripheral8withUUIDSi10Foundation0J0V_tF",
-            "moduleName": "UnityBlePlugin",
-            "objc_name": "disconnectFromPeripheralWithUUID:",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "discoverServices",
-            "printedName": "discoverServices(forPeripheral:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Int",
-                "printedName": "Swift.Int",
-                "usr": "s:Si"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "UUID",
-                "printedName": "Foundation.UUID",
-                "usr": "s:10Foundation4UUIDV"
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)discoverServicesForPeripheral:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC16discoverServices13forPeripheralSi10Foundation4UUIDV_tF",
-            "moduleName": "UnityBlePlugin",
-            "objc_name": "discoverServicesForPeripheral:",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "writeValue",
-            "printedName": "writeValue(_:toCharacteristic:forService:ofPeripheral:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Int",
-                "printedName": "Swift.Int",
-                "usr": "s:Si"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "Data",
-                "printedName": "Foundation.Data",
-                "usr": "s:10Foundation4DataV"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "CBUUID",
-                "printedName": "CoreBluetooth.CBUUID",
-                "usr": "c:objc(cs)CBUUID"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "CBUUID",
-                "printedName": "CoreBluetooth.CBUUID",
-                "usr": "c:objc(cs)CBUUID"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "UUID",
-                "printedName": "Foundation.UUID",
-                "usr": "s:10Foundation4UUIDV"
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)writeValue:toCharacteristic:forService:ofPeripheral:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC10writeValue_16toCharacteristic10forService12ofPeripheralSi10Foundation4DataV_So6CBUUIDCAlH4UUIDVtF",
-            "moduleName": "UnityBlePlugin",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "readCharacteristic",
-            "printedName": "readCharacteristic(withUUID:forService:ofPeripheral:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Int",
-                "printedName": "Swift.Int",
-                "usr": "s:Si"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "CBUUID",
-                "printedName": "CoreBluetooth.CBUUID",
-                "usr": "c:objc(cs)CBUUID"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "CBUUID",
-                "printedName": "CoreBluetooth.CBUUID",
-                "usr": "c:objc(cs)CBUUID"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "UUID",
-                "printedName": "Foundation.UUID",
-                "usr": "s:10Foundation4UUIDV"
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)readCharacteristicWithUUID:forService:ofPeripheral:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC18readCharacteristic8withUUID10forService12ofPeripheralSiSo6CBUUIDC_AI10Foundation0I0VtF",
-            "moduleName": "UnityBlePlugin",
-            "objc_name": "readCharacteristicWithUUID:forService:ofPeripheral:",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "subscribeToCharacteristic",
-            "printedName": "subscribeToCharacteristic(withUUID:forService:ofPeripheral:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Int",
-                "printedName": "Swift.Int",
-                "usr": "s:Si"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "CBUUID",
-                "printedName": "CoreBluetooth.CBUUID",
-                "usr": "c:objc(cs)CBUUID"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "CBUUID",
-                "printedName": "CoreBluetooth.CBUUID",
-                "usr": "c:objc(cs)CBUUID"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "UUID",
-                "printedName": "Foundation.UUID",
-                "usr": "s:10Foundation4UUIDV"
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)subscribeToCharacteristicWithUUID:forService:ofPeripheral:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC25subscribeToCharacteristic8withUUID10forService12ofPeripheralSiSo6CBUUIDC_AI10Foundation0J0VtF",
-            "moduleName": "UnityBlePlugin",
-            "objc_name": "subscribeToCharacteristicWithUUID:forService:ofPeripheral:",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "unsubscribeFromCharacteristic",
-            "printedName": "unsubscribeFromCharacteristic(withUUID:forService:ofPeripheral:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Int",
-                "printedName": "Swift.Int",
-                "usr": "s:Si"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "CBUUID",
-                "printedName": "CoreBluetooth.CBUUID",
-                "usr": "c:objc(cs)CBUUID"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "CBUUID",
-                "printedName": "CoreBluetooth.CBUUID",
-                "usr": "c:objc(cs)CBUUID"
-              },
-              {
-                "kind": "TypeNominal",
-                "name": "UUID",
-                "printedName": "Foundation.UUID",
-                "usr": "s:10Foundation4UUIDV"
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)unsubscribeFromCharacteristicWithUUID:forService:ofPeripheral:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC29unsubscribeFromCharacteristic8withUUID10forService12ofPeripheralSiSo6CBUUIDC_AI10Foundation0J0VtF",
-            "moduleName": "UnityBlePlugin",
-            "objc_name": "unsubscribeFromCharacteristicWithUUID:forService:ofPeripheral:",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "registerOnPeripheralDiscovered",
-            "printedName": "registerOnPeripheralDiscovered(_:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Void",
-                "printedName": "()"
-              },
-              {
-                "kind": "TypeFunc",
-                "name": "Function",
-                "printedName": "(Swift.String) -> ()",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Void",
-                    "printedName": "()"
-                  },
-                  {
-                    "kind": "TypeNominal",
-                    "name": "String",
-                    "printedName": "Swift.String",
-                    "usr": "s:SS"
-                  }
-                ]
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnPeripheralDiscovered:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC30registerOnPeripheralDiscoveredyyySScF",
-            "moduleName": "UnityBlePlugin",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "registerOnPeripheralConnected",
-            "printedName": "registerOnPeripheralConnected(_:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Void",
-                "printedName": "()"
-              },
-              {
-                "kind": "TypeFunc",
-                "name": "Function",
-                "printedName": "(Swift.String) -> ()",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Void",
-                    "printedName": "()"
-                  },
-                  {
-                    "kind": "TypeNominal",
-                    "name": "String",
-                    "printedName": "Swift.String",
-                    "usr": "s:SS"
-                  }
-                ]
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnPeripheralConnected:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC29registerOnPeripheralConnectedyyySScF",
-            "moduleName": "UnityBlePlugin",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "registerOnPeripheralDisconnected",
-            "printedName": "registerOnPeripheralDisconnected(_:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Void",
-                "printedName": "()"
-              },
-              {
-                "kind": "TypeFunc",
-                "name": "Function",
-                "printedName": "(Swift.String) -> ()",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Void",
-                    "printedName": "()"
-                  },
-                  {
-                    "kind": "TypeNominal",
-                    "name": "String",
-                    "printedName": "Swift.String",
-                    "usr": "s:SS"
-                  }
-                ]
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnPeripheralDisconnected:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC32registerOnPeripheralDisconnectedyyySScF",
-            "moduleName": "UnityBlePlugin",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "registerOnBleErrorDetected",
-            "printedName": "registerOnBleErrorDetected(_:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Void",
-                "printedName": "()"
-              },
-              {
-                "kind": "TypeFunc",
-                "name": "Function",
-                "printedName": "(Swift.String) -> ()",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Void",
-                    "printedName": "()"
-                  },
-                  {
-                    "kind": "TypeNominal",
-                    "name": "String",
-                    "printedName": "Swift.String",
-                    "usr": "s:SS"
-                  }
-                ]
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnBleErrorDetected:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC010registerOnB13ErrorDetectedyyySScF",
-            "moduleName": "UnityBlePlugin",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "registerOnBleStateChanged",
-            "printedName": "registerOnBleStateChanged(_:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Void",
-                "printedName": "()"
-              },
-              {
-                "kind": "TypeFunc",
-                "name": "Function",
-                "printedName": "(Swift.Int) -> ()",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Void",
-                    "printedName": "()"
-                  },
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Int",
-                    "printedName": "Swift.Int",
-                    "usr": "s:Si"
-                  }
-                ]
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnBleStateChanged:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC010registerOnB12StateChangedyyySicF",
-            "moduleName": "UnityBlePlugin",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "registerOnDiscoveredPeripheralCleared",
-            "printedName": "registerOnDiscoveredPeripheralCleared(_:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Void",
-                "printedName": "()"
-              },
-              {
-                "kind": "TypeFunc",
-                "name": "Function",
-                "printedName": "() -> ()",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Void",
-                    "printedName": "()"
-                  },
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Void",
-                    "printedName": "()"
-                  }
-                ]
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnDiscoveredPeripheralCleared:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC37registerOnDiscoveredPeripheralClearedyyyycF",
-            "moduleName": "UnityBlePlugin",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "registerOnDiscoveredServices",
-            "printedName": "registerOnDiscoveredServices(_:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Void",
-                "printedName": "()"
-              },
-              {
-                "kind": "TypeFunc",
-                "name": "Function",
-                "printedName": "(Swift.String) -> ()",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Void",
-                    "printedName": "()"
-                  },
-                  {
-                    "kind": "TypeNominal",
-                    "name": "String",
-                    "printedName": "Swift.String",
-                    "usr": "s:SS"
-                  }
-                ]
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnDiscoveredServices:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC28registerOnDiscoveredServicesyyySScF",
-            "moduleName": "UnityBlePlugin",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "registerOnDiscoveredCharacteristics",
-            "printedName": "registerOnDiscoveredCharacteristics(_:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Void",
-                "printedName": "()"
-              },
-              {
-                "kind": "TypeFunc",
-                "name": "Function",
-                "printedName": "(Swift.String) -> ()",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Void",
-                    "printedName": "()"
-                  },
-                  {
-                    "kind": "TypeNominal",
-                    "name": "String",
-                    "printedName": "Swift.String",
-                    "usr": "s:SS"
-                  }
-                ]
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnDiscoveredCharacteristics:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC35registerOnDiscoveredCharacteristicsyyySScF",
-            "moduleName": "UnityBlePlugin",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "registerOnLog",
-            "printedName": "registerOnLog(_:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Void",
-                "printedName": "()"
-              },
-              {
-                "kind": "TypeFunc",
-                "name": "Function",
-                "printedName": "(Swift.String) -> ()",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Void",
-                    "printedName": "()"
-                  },
-                  {
-                    "kind": "TypeNominal",
-                    "name": "String",
-                    "printedName": "Swift.String",
-                    "usr": "s:SS"
-                  }
-                ]
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnLog:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC13registerOnLogyyySScF",
-            "moduleName": "UnityBlePlugin",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "registerOnWriteCharacteristicCompleted",
-            "printedName": "registerOnWriteCharacteristicCompleted(_:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Void",
-                "printedName": "()"
-              },
-              {
-                "kind": "TypeFunc",
-                "name": "Function",
-                "printedName": "(Swift.String, Swift.Int, Swift.String) -> ()",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Void",
-                    "printedName": "()"
-                  },
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Tuple",
-                    "printedName": "(Swift.String, Swift.Int, Swift.String)",
-                    "children": [
-                      {
-                        "kind": "TypeNominal",
-                        "name": "String",
-                        "printedName": "Swift.String",
-                        "usr": "s:SS"
-                      },
-                      {
-                        "kind": "TypeNominal",
-                        "name": "Int",
-                        "printedName": "Swift.Int",
-                        "usr": "s:Si"
-                      },
-                      {
-                        "kind": "TypeNominal",
-                        "name": "String",
-                        "printedName": "Swift.String",
-                        "usr": "s:SS"
-                      }
-                    ]
-                  }
-                ]
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnWriteCharacteristicCompleted:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC38registerOnWriteCharacteristicCompletedyyySS_SiSStcF",
-            "moduleName": "UnityBlePlugin",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "registerOnReadRSSICompleted",
-            "printedName": "registerOnReadRSSICompleted(_:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Void",
-                "printedName": "()"
-              },
-              {
-                "kind": "TypeFunc",
-                "name": "Function",
-                "printedName": "(Swift.Int, Swift.String) -> ()",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Void",
-                    "printedName": "()"
-                  },
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Tuple",
-                    "printedName": "(Swift.Int, Swift.String)",
-                    "children": [
-                      {
-                        "kind": "TypeNominal",
-                        "name": "Int",
-                        "printedName": "Swift.Int",
-                        "usr": "s:Si"
-                      },
-                      {
-                        "kind": "TypeNominal",
-                        "name": "String",
-                        "printedName": "Swift.String",
-                        "usr": "s:SS"
-                      }
-                    ]
-                  }
-                ]
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnReadRSSICompleted:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC27registerOnReadRSSICompletedyyySi_SStcF",
-            "moduleName": "UnityBlePlugin",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          },
-          {
-            "kind": "Function",
-            "name": "registerOnDataReceived",
-            "printedName": "registerOnDataReceived(_:)",
-            "children": [
-              {
-                "kind": "TypeNominal",
-                "name": "Void",
-                "printedName": "()"
-              },
-              {
-                "kind": "TypeFunc",
-                "name": "Function",
-                "printedName": "(Swift.String, Swift.String) -> ()",
-                "children": [
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Void",
-                    "printedName": "()"
-                  },
-                  {
-                    "kind": "TypeNominal",
-                    "name": "Tuple",
-                    "printedName": "(Swift.String, Swift.String)",
-                    "children": [
-                      {
-                        "kind": "TypeNominal",
-                        "name": "String",
-                        "printedName": "Swift.String",
-                        "usr": "s:SS"
-                      },
-                      {
-                        "kind": "TypeNominal",
-                        "name": "String",
-                        "printedName": "Swift.String",
-                        "usr": "s:SS"
-                      }
-                    ]
-                  }
-                ]
-              }
-            ],
-            "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnDataReceived:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC22registerOnDataReceivedyyySS_SStcF",
-            "moduleName": "UnityBlePlugin",
-            "declAttributes": [
-              "AccessControl",
-              "ObjC"
-            ],
-            "funcSelfKind": "NonMutating"
-          }
-        ],
-        "declKind": "Class",
-        "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade",
-        "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC",
-        "moduleName": "UnityBlePlugin",
-        "declAttributes": [
-          "AccessControl",
-          "ObjC"
-        ],
-        "superclassUsr": "c:objc(cs)NSObject",
-        "hasMissingDesignatedInitializers": true,
-        "inheritsConvenienceInitializers": true,
-        "superclassNames": [
-          "ObjectiveC.NSObject"
-        ],
-        "conformances": [
-          {
-            "kind": "Conformance",
-            "name": "Copyable",
-            "printedName": "Copyable",
-            "usr": "s:s8CopyableP",
-            "mangledName": "$ss8CopyableP"
-          },
-          {
-            "kind": "Conformance",
-            "name": "Escapable",
-            "printedName": "Escapable",
-            "usr": "s:s9EscapableP",
-            "mangledName": "$ss9EscapableP"
-          },
-          {
-            "kind": "Conformance",
-            "name": "Equatable",
-            "printedName": "Equatable",
-            "usr": "s:SQ",
-            "mangledName": "$sSQ"
-          },
-          {
-            "kind": "Conformance",
-            "name": "Hashable",
-            "printedName": "Hashable",
-            "usr": "s:SH",
-            "mangledName": "$sSH"
-          },
-          {
-            "kind": "Conformance",
-            "name": "CVarArg",
-            "printedName": "CVarArg",
-            "usr": "s:s7CVarArgP",
-            "mangledName": "$ss7CVarArgP"
-          },
-          {
-            "kind": "Conformance",
-            "name": "_KeyValueCodingAndObservingPublishing",
-            "printedName": "_KeyValueCodingAndObservingPublishing",
-            "usr": "s:10Foundation37_KeyValueCodingAndObservingPublishingP",
-            "mangledName": "$s10Foundation37_KeyValueCodingAndObservingPublishingP"
-          },
-          {
-            "kind": "Conformance",
-            "name": "_KeyValueCodingAndObserving",
-            "printedName": "_KeyValueCodingAndObserving",
-            "usr": "s:10Foundation27_KeyValueCodingAndObservingP",
-            "mangledName": "$s10Foundation27_KeyValueCodingAndObservingP"
-          },
-          {
-            "kind": "Conformance",
-            "name": "CustomStringConvertible",
-            "printedName": "CustomStringConvertible",
-            "usr": "s:s23CustomStringConvertibleP",
-            "mangledName": "$ss23CustomStringConvertibleP"
-          },
-          {
-            "kind": "Conformance",
-            "name": "CustomDebugStringConvertible",
-            "printedName": "CustomDebugStringConvertible",
-            "usr": "s:s28CustomDebugStringConvertibleP",
-            "mangledName": "$ss28CustomDebugStringConvertibleP"
-          }
-        ]
-      },
-      {
-        "kind": "Import",
-        "name": "Foundation",
-        "printedName": "Foundation",
-        "declKind": "Import",
-        "moduleName": "UnityBlePlugin"
-      },
-      {
-        "kind": "Import",
-        "name": "CoreBluetooth",
-        "printedName": "CoreBluetooth",
-        "declKind": "Import",
-        "moduleName": "UnityBlePlugin"
-      },
-      {
         "kind": "TypeDecl",
         "name": "UnityDelegates",
         "printedName": "UnityDelegates",
@@ -3399,6 +2298,1107 @@
             "mangledName": "$ss28CustomDebugStringConvertibleP"
           }
         ]
+      },
+      {
+        "kind": "Import",
+        "name": "Foundation",
+        "printedName": "Foundation",
+        "declKind": "Import",
+        "moduleName": "UnityBlePlugin"
+      },
+      {
+        "kind": "Import",
+        "name": "CoreBluetooth",
+        "printedName": "CoreBluetooth",
+        "declKind": "Import",
+        "moduleName": "UnityBlePlugin"
+      },
+      {
+        "kind": "Import",
+        "name": "Foundation",
+        "printedName": "Foundation",
+        "declKind": "Import",
+        "moduleName": "UnityBlePlugin"
+      },
+      {
+        "kind": "Import",
+        "name": "CoreBluetooth",
+        "printedName": "CoreBluetooth",
+        "declKind": "Import",
+        "moduleName": "UnityBlePlugin"
+      },
+      {
+        "kind": "Import",
+        "name": "Foundation",
+        "printedName": "Foundation",
+        "declKind": "Import",
+        "moduleName": "UnityBlePlugin"
+      },
+      {
+        "kind": "Import",
+        "name": "CoreBluetooth",
+        "printedName": "CoreBluetooth",
+        "declKind": "Import",
+        "moduleName": "UnityBlePlugin"
+      },
+      {
+        "kind": "Import",
+        "name": "Foundation",
+        "printedName": "Foundation",
+        "declKind": "Import",
+        "moduleName": "UnityBlePlugin"
+      },
+      {
+        "kind": "Import",
+        "name": "CoreBluetooth",
+        "printedName": "CoreBluetooth",
+        "declKind": "Import",
+        "moduleName": "UnityBlePlugin"
+      },
+      {
+        "kind": "Import",
+        "name": "Foundation",
+        "printedName": "Foundation",
+        "declKind": "Import",
+        "moduleName": "UnityBlePlugin"
+      },
+      {
+        "kind": "Import",
+        "name": "CoreBluetooth",
+        "printedName": "CoreBluetooth",
+        "declKind": "Import",
+        "moduleName": "UnityBlePlugin"
+      },
+      {
+        "kind": "Import",
+        "name": "Foundation",
+        "printedName": "Foundation",
+        "declKind": "Import",
+        "moduleName": "UnityBlePlugin"
+      },
+      {
+        "kind": "Import",
+        "name": "CoreBluetooth",
+        "printedName": "CoreBluetooth",
+        "declKind": "Import",
+        "moduleName": "UnityBlePlugin"
+      },
+      {
+        "kind": "TypeDecl",
+        "name": "UnityBridgeFacade",
+        "printedName": "UnityBridgeFacade",
+        "children": [
+          {
+            "kind": "Var",
+            "name": "shared",
+            "printedName": "shared",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "UnityBridgeFacade",
+                "printedName": "UnityBlePlugin.UnityBridgeFacade",
+                "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(cpy)shared",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC6sharedACvpZ",
+            "moduleName": "UnityBlePlugin",
+            "static": true,
+            "declAttributes": [
+              "HasInitialValue",
+              "Final",
+              "HasStorage",
+              "AccessControl",
+              "ObjC"
+            ],
+            "isLet": true,
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "UnityBridgeFacade",
+                    "printedName": "UnityBlePlugin.UnityBridgeFacade",
+                    "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(cm)shared",
+                "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC6sharedACvgZ",
+                "moduleName": "UnityBlePlugin",
+                "static": true,
+                "implicit": true,
+                "declAttributes": [
+                  "Final",
+                  "ObjC"
+                ],
+                "accessorKind": "get"
+              }
+            ]
+          },
+          {
+            "kind": "Function",
+            "name": "isScanning",
+            "printedName": "isScanning()",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Bool",
+                "printedName": "Swift.Bool",
+                "usr": "s:Sb"
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)isScanning",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC10isScanningSbyF",
+            "moduleName": "UnityBlePlugin",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "startScanning",
+            "printedName": "startScanning(for:nameFilter:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int",
+                "printedName": "Swift.Int",
+                "usr": "s:Si"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Optional",
+                "printedName": "[CoreBluetooth.CBUUID]?",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Array",
+                    "printedName": "[CoreBluetooth.CBUUID]",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "CBUUID",
+                        "printedName": "CoreBluetooth.CBUUID",
+                        "usr": "c:objc(cs)CBUUID"
+                      }
+                    ],
+                    "usr": "s:Sa"
+                  }
+                ],
+                "usr": "s:Sq"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Optional",
+                "printedName": "Swift.String?",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ],
+                "hasDefaultArg": true,
+                "usr": "s:Sq"
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)startScanningFor:nameFilter:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC13startScanning3for10nameFilterSiSaySo6CBUUIDCGSg_SSSgtF",
+            "moduleName": "UnityBlePlugin",
+            "objc_name": "startScanningFor:nameFilter:",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "stopScanning",
+            "printedName": "stopScanning()",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Void",
+                "printedName": "()"
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)stopScanning",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC12stopScanningyyF",
+            "moduleName": "UnityBlePlugin",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "connectToPeripheral",
+            "printedName": "connectToPeripheral(withUUID:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int",
+                "printedName": "Swift.Int",
+                "usr": "s:Si"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "UUID",
+                "printedName": "Foundation.UUID",
+                "usr": "s:10Foundation4UUIDV"
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)connectToPeripheralWithUUID:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC19connectToPeripheral8withUUIDSi10Foundation0J0V_tF",
+            "moduleName": "UnityBlePlugin",
+            "objc_name": "connectToPeripheralWithUUID:",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "disconnectFromPeripheral",
+            "printedName": "disconnectFromPeripheral(withUUID:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int",
+                "printedName": "Swift.Int",
+                "usr": "s:Si"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "UUID",
+                "printedName": "Foundation.UUID",
+                "usr": "s:10Foundation4UUIDV"
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)disconnectFromPeripheralWithUUID:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC24disconnectFromPeripheral8withUUIDSi10Foundation0J0V_tF",
+            "moduleName": "UnityBlePlugin",
+            "objc_name": "disconnectFromPeripheralWithUUID:",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "discoverServices",
+            "printedName": "discoverServices(forPeripheral:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int",
+                "printedName": "Swift.Int",
+                "usr": "s:Si"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "UUID",
+                "printedName": "Foundation.UUID",
+                "usr": "s:10Foundation4UUIDV"
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)discoverServicesForPeripheral:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC16discoverServices13forPeripheralSi10Foundation4UUIDV_tF",
+            "moduleName": "UnityBlePlugin",
+            "objc_name": "discoverServicesForPeripheral:",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "writeValue",
+            "printedName": "writeValue(_:toCharacteristic:forService:ofPeripheral:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int",
+                "printedName": "Swift.Int",
+                "usr": "s:Si"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Data",
+                "printedName": "Foundation.Data",
+                "usr": "s:10Foundation4DataV"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "CBUUID",
+                "printedName": "CoreBluetooth.CBUUID",
+                "usr": "c:objc(cs)CBUUID"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "CBUUID",
+                "printedName": "CoreBluetooth.CBUUID",
+                "usr": "c:objc(cs)CBUUID"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "UUID",
+                "printedName": "Foundation.UUID",
+                "usr": "s:10Foundation4UUIDV"
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)writeValue:toCharacteristic:forService:ofPeripheral:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC10writeValue_16toCharacteristic10forService12ofPeripheralSi10Foundation4DataV_So6CBUUIDCAlH4UUIDVtF",
+            "moduleName": "UnityBlePlugin",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "readCharacteristic",
+            "printedName": "readCharacteristic(withUUID:forService:ofPeripheral:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int",
+                "printedName": "Swift.Int",
+                "usr": "s:Si"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "CBUUID",
+                "printedName": "CoreBluetooth.CBUUID",
+                "usr": "c:objc(cs)CBUUID"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "CBUUID",
+                "printedName": "CoreBluetooth.CBUUID",
+                "usr": "c:objc(cs)CBUUID"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "UUID",
+                "printedName": "Foundation.UUID",
+                "usr": "s:10Foundation4UUIDV"
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)readCharacteristicWithUUID:forService:ofPeripheral:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC18readCharacteristic8withUUID10forService12ofPeripheralSiSo6CBUUIDC_AI10Foundation0I0VtF",
+            "moduleName": "UnityBlePlugin",
+            "objc_name": "readCharacteristicWithUUID:forService:ofPeripheral:",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "subscribeToCharacteristic",
+            "printedName": "subscribeToCharacteristic(withUUID:forService:ofPeripheral:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int",
+                "printedName": "Swift.Int",
+                "usr": "s:Si"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "CBUUID",
+                "printedName": "CoreBluetooth.CBUUID",
+                "usr": "c:objc(cs)CBUUID"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "CBUUID",
+                "printedName": "CoreBluetooth.CBUUID",
+                "usr": "c:objc(cs)CBUUID"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "UUID",
+                "printedName": "Foundation.UUID",
+                "usr": "s:10Foundation4UUIDV"
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)subscribeToCharacteristicWithUUID:forService:ofPeripheral:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC25subscribeToCharacteristic8withUUID10forService12ofPeripheralSiSo6CBUUIDC_AI10Foundation0J0VtF",
+            "moduleName": "UnityBlePlugin",
+            "objc_name": "subscribeToCharacteristicWithUUID:forService:ofPeripheral:",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "unsubscribeFromCharacteristic",
+            "printedName": "unsubscribeFromCharacteristic(withUUID:forService:ofPeripheral:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Int",
+                "printedName": "Swift.Int",
+                "usr": "s:Si"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "CBUUID",
+                "printedName": "CoreBluetooth.CBUUID",
+                "usr": "c:objc(cs)CBUUID"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "CBUUID",
+                "printedName": "CoreBluetooth.CBUUID",
+                "usr": "c:objc(cs)CBUUID"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "UUID",
+                "printedName": "Foundation.UUID",
+                "usr": "s:10Foundation4UUIDV"
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)unsubscribeFromCharacteristicWithUUID:forService:ofPeripheral:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC29unsubscribeFromCharacteristic8withUUID10forService12ofPeripheralSiSo6CBUUIDC_AI10Foundation0J0VtF",
+            "moduleName": "UnityBlePlugin",
+            "objc_name": "unsubscribeFromCharacteristicWithUUID:forService:ofPeripheral:",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "registerOnPeripheralDiscovered",
+            "printedName": "registerOnPeripheralDiscovered(_:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Void",
+                "printedName": "()"
+              },
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(Swift.String) -> ()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ]
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnPeripheralDiscovered:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC30registerOnPeripheralDiscoveredyyySScF",
+            "moduleName": "UnityBlePlugin",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "registerOnPeripheralConnected",
+            "printedName": "registerOnPeripheralConnected(_:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Void",
+                "printedName": "()"
+              },
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(Swift.String) -> ()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ]
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnPeripheralConnected:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC29registerOnPeripheralConnectedyyySScF",
+            "moduleName": "UnityBlePlugin",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "registerOnPeripheralDisconnected",
+            "printedName": "registerOnPeripheralDisconnected(_:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Void",
+                "printedName": "()"
+              },
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(Swift.String) -> ()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ]
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnPeripheralDisconnected:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC32registerOnPeripheralDisconnectedyyySScF",
+            "moduleName": "UnityBlePlugin",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "registerOnBleErrorDetected",
+            "printedName": "registerOnBleErrorDetected(_:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Void",
+                "printedName": "()"
+              },
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(Swift.String) -> ()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ]
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnBleErrorDetected:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC010registerOnB13ErrorDetectedyyySScF",
+            "moduleName": "UnityBlePlugin",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "registerOnBleStateChanged",
+            "printedName": "registerOnBleStateChanged(_:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Void",
+                "printedName": "()"
+              },
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(Swift.Int) -> ()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Int",
+                    "printedName": "Swift.Int",
+                    "usr": "s:Si"
+                  }
+                ]
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnBleStateChanged:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC010registerOnB12StateChangedyyySicF",
+            "moduleName": "UnityBlePlugin",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "registerOnDiscoveredPeripheralCleared",
+            "printedName": "registerOnDiscoveredPeripheralCleared(_:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Void",
+                "printedName": "()"
+              },
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "() -> ()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ]
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnDiscoveredPeripheralCleared:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC37registerOnDiscoveredPeripheralClearedyyyycF",
+            "moduleName": "UnityBlePlugin",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "registerOnDiscoveredServices",
+            "printedName": "registerOnDiscoveredServices(_:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Void",
+                "printedName": "()"
+              },
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(Swift.String) -> ()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ]
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnDiscoveredServices:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC28registerOnDiscoveredServicesyyySScF",
+            "moduleName": "UnityBlePlugin",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "registerOnDiscoveredCharacteristics",
+            "printedName": "registerOnDiscoveredCharacteristics(_:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Void",
+                "printedName": "()"
+              },
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(Swift.String) -> ()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ]
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnDiscoveredCharacteristics:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC35registerOnDiscoveredCharacteristicsyyySScF",
+            "moduleName": "UnityBlePlugin",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "registerOnLog",
+            "printedName": "registerOnLog(_:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Void",
+                "printedName": "()"
+              },
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(Swift.String) -> ()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ]
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnLog:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC13registerOnLogyyySScF",
+            "moduleName": "UnityBlePlugin",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "registerOnWriteCharacteristicCompleted",
+            "printedName": "registerOnWriteCharacteristicCompleted(_:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Void",
+                "printedName": "()"
+              },
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(Swift.String, Swift.Int, Swift.String) -> ()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Tuple",
+                    "printedName": "(Swift.String, Swift.Int, Swift.String)",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "String",
+                        "printedName": "Swift.String",
+                        "usr": "s:SS"
+                      },
+                      {
+                        "kind": "TypeNominal",
+                        "name": "Int",
+                        "printedName": "Swift.Int",
+                        "usr": "s:Si"
+                      },
+                      {
+                        "kind": "TypeNominal",
+                        "name": "String",
+                        "printedName": "Swift.String",
+                        "usr": "s:SS"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnWriteCharacteristicCompleted:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC38registerOnWriteCharacteristicCompletedyyySS_SiSStcF",
+            "moduleName": "UnityBlePlugin",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "registerOnReadRSSICompleted",
+            "printedName": "registerOnReadRSSICompleted(_:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Void",
+                "printedName": "()"
+              },
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(Swift.Int, Swift.String) -> ()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Tuple",
+                    "printedName": "(Swift.Int, Swift.String)",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "Int",
+                        "printedName": "Swift.Int",
+                        "usr": "s:Si"
+                      },
+                      {
+                        "kind": "TypeNominal",
+                        "name": "String",
+                        "printedName": "Swift.String",
+                        "usr": "s:SS"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnReadRSSICompleted:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC27registerOnReadRSSICompletedyyySi_SStcF",
+            "moduleName": "UnityBlePlugin",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "registerOnDataReceived",
+            "printedName": "registerOnDataReceived(_:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Void",
+                "printedName": "()"
+              },
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(Swift.String, Swift.String) -> ()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Tuple",
+                    "printedName": "(Swift.String, Swift.String)",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "String",
+                        "printedName": "Swift.String",
+                        "usr": "s:SS"
+                      },
+                      {
+                        "kind": "TypeNominal",
+                        "name": "String",
+                        "printedName": "Swift.String",
+                        "usr": "s:SS"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnDataReceived:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC22registerOnDataReceivedyyySS_SStcF",
+            "moduleName": "UnityBlePlugin",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          }
+        ],
+        "declKind": "Class",
+        "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade",
+        "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC",
+        "moduleName": "UnityBlePlugin",
+        "declAttributes": [
+          "AccessControl",
+          "ObjC"
+        ],
+        "superclassUsr": "c:objc(cs)NSObject",
+        "hasMissingDesignatedInitializers": true,
+        "inheritsConvenienceInitializers": true,
+        "superclassNames": [
+          "ObjectiveC.NSObject"
+        ],
+        "conformances": [
+          {
+            "kind": "Conformance",
+            "name": "Copyable",
+            "printedName": "Copyable",
+            "usr": "s:s8CopyableP",
+            "mangledName": "$ss8CopyableP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "Escapable",
+            "printedName": "Escapable",
+            "usr": "s:s9EscapableP",
+            "mangledName": "$ss9EscapableP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "Equatable",
+            "printedName": "Equatable",
+            "usr": "s:SQ",
+            "mangledName": "$sSQ"
+          },
+          {
+            "kind": "Conformance",
+            "name": "Hashable",
+            "printedName": "Hashable",
+            "usr": "s:SH",
+            "mangledName": "$sSH"
+          },
+          {
+            "kind": "Conformance",
+            "name": "CVarArg",
+            "printedName": "CVarArg",
+            "usr": "s:s7CVarArgP",
+            "mangledName": "$ss7CVarArgP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "_KeyValueCodingAndObservingPublishing",
+            "printedName": "_KeyValueCodingAndObservingPublishing",
+            "usr": "s:10Foundation37_KeyValueCodingAndObservingPublishingP",
+            "mangledName": "$s10Foundation37_KeyValueCodingAndObservingPublishingP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "_KeyValueCodingAndObserving",
+            "printedName": "_KeyValueCodingAndObserving",
+            "usr": "s:10Foundation27_KeyValueCodingAndObservingP",
+            "mangledName": "$s10Foundation27_KeyValueCodingAndObservingP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "CustomStringConvertible",
+            "printedName": "CustomStringConvertible",
+            "usr": "s:s23CustomStringConvertibleP",
+            "mangledName": "$ss23CustomStringConvertibleP"
+          },
+          {
+            "kind": "Conformance",
+            "name": "CustomDebugStringConvertible",
+            "printedName": "CustomDebugStringConvertible",
+            "usr": "s:s28CustomDebugStringConvertibleP",
+            "mangledName": "$ss28CustomDebugStringConvertibleP"
+          }
+        ]
+      },
+      {
+        "kind": "Import",
+        "name": "Foundation",
+        "printedName": "Foundation",
+        "declKind": "Import",
+        "moduleName": "UnityBlePlugin"
       }
     ],
     "json_format_version": 8

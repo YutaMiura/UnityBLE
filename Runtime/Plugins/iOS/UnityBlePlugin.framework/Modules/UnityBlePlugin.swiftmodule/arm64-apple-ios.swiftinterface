@@ -8,6 +8,26 @@ import Swift
 import _Concurrency
 import _StringProcessing
 import _SwiftConcurrencyShims
+@objc @_inheritsConvenienceInitializers public class UnityDelegates : ObjectiveC.NSObject {
+  public static var OnPeripheralDiscovered: ((Swift.String) -> Swift.Void)?
+  public static var OnDiscoveredPeripheralCleared: (() -> Swift.Void)?
+  public static var OnPeripheralConnected: ((Swift.String) -> Swift.Void)?
+  public static var OnPeripheralDisconnected: ((Swift.String) -> Swift.Void)?
+  public static var OnBleErrorDetected: ((Swift.String) -> Swift.Void)?
+  public static var OnBleStateChanged: ((Swift.Int) -> Swift.Void)?
+  public static var OnDiscoveredServices: ((Swift.String) -> Swift.Void)?
+  public static var OnDiscoveredCharacteristics: ((Swift.String) -> Swift.Void)?
+  public static var OnWriteCharacteristicCompleted: ((Swift.String, Swift.Int, Swift.String) -> Swift.Void)?
+  public static var OnReadRSSICompleted: ((Swift.Int, Swift.String) -> Swift.Void)?
+  public static var OnDataReceived: ((Swift.String, Swift.String) -> Swift.Void)?
+  @objc override dynamic public init()
+  @objc deinit
+}
+@objc @_inheritsConvenienceInitializers public class UnityLogger : ObjectiveC.NSObject {
+  public static var OnLog: ((Swift.String) -> Swift.Void)?
+  @objc override dynamic public init()
+  @objc deinit
+}
 @_inheritsConvenienceInitializers @_hasMissingDesignatedInitializers @objc public class UnityBridgeFacade : ObjectiveC.NSObject {
   @objc public static let shared: UnityBlePlugin.UnityBridgeFacade
   @objc public func isScanning() -> Swift.Bool
@@ -32,25 +52,5 @@ import _SwiftConcurrencyShims
   @objc public func registerOnWriteCharacteristicCompleted(_ callback: @escaping (Swift.String, Swift.Int, Swift.String) -> Swift.Void)
   @objc public func registerOnReadRSSICompleted(_ callback: @escaping (Swift.Int, Swift.String) -> Swift.Void)
   @objc public func registerOnDataReceived(_ callback: @escaping (Swift.String, Swift.String) -> Swift.Void)
-  @objc deinit
-}
-@objc @_inheritsConvenienceInitializers public class UnityDelegates : ObjectiveC.NSObject {
-  public static var OnPeripheralDiscovered: ((Swift.String) -> Swift.Void)?
-  public static var OnDiscoveredPeripheralCleared: (() -> Swift.Void)?
-  public static var OnPeripheralConnected: ((Swift.String) -> Swift.Void)?
-  public static var OnPeripheralDisconnected: ((Swift.String) -> Swift.Void)?
-  public static var OnBleErrorDetected: ((Swift.String) -> Swift.Void)?
-  public static var OnBleStateChanged: ((Swift.Int) -> Swift.Void)?
-  public static var OnDiscoveredServices: ((Swift.String) -> Swift.Void)?
-  public static var OnDiscoveredCharacteristics: ((Swift.String) -> Swift.Void)?
-  public static var OnWriteCharacteristicCompleted: ((Swift.String, Swift.Int, Swift.String) -> Swift.Void)?
-  public static var OnReadRSSICompleted: ((Swift.Int, Swift.String) -> Swift.Void)?
-  public static var OnDataReceived: ((Swift.String, Swift.String) -> Swift.Void)?
-  @objc override dynamic public init()
-  @objc deinit
-}
-@objc @_inheritsConvenienceInitializers public class UnityLogger : ObjectiveC.NSObject {
-  public static var OnLog: ((Swift.String) -> Swift.Void)?
-  @objc override dynamic public init()
   @objc deinit
 }

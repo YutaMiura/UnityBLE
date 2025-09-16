@@ -37,11 +37,13 @@ namespace UnityBLE
 
         // Native function imports
 #if UNITY_EDITOR_OSX
+        private const string PluginName = "UnityBlePluginBundle";
         private const string PluginEntryPointPrefix = "UnityBLEBundle_";
 #else
+        private const string PluginName = "__Internal";
         private const string PluginEntryPointPrefix = "UnityBLE_";
 #endif
-        private const string PluginName = "__Internal";
+
 
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "StartScanning")]
         private static extern int UnityBLE_StartScanning(string[] serviceUUIDs, string nameFilter);

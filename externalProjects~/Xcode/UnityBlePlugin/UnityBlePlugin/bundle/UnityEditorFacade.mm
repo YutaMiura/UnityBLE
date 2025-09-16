@@ -1,6 +1,10 @@
 #import <Foundation/Foundation.h>
 #import <UnityBlePlugin/UnityBridge.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 int UnityBLEBundle_StartScanning(const char **serviceUUIDs,
                                  const char *nameFilter) {
   return UnityBLE_StartScanning(serviceUUIDs, nameFilter);
@@ -28,8 +32,7 @@ int UnityBLEBundle_ReadCharacteristic(const char *peripheralUUID,
 int UnityBLEBundle_WriteCharacteristic(const char *peripheralUUID,
                                        const char *serviceUUID,
                                        const char *characteristicUUID,
-                                       const unsigned char *data,
-                                       int length) {
+                                       const unsigned char *data, int length) {
   return UnityBLE_WriteCharacteristic(peripheralUUID, serviceUUID,
                                       characteristicUUID, data, length);
 }
@@ -108,3 +111,7 @@ void UnityBLEBundle_registerOnValueReceived(OnValueReceivedCallback callback) {
 int UnityBLEBundle_discoverServices(const char *peripheralUUID) {
   return UnityBLE_discoverServices(peripheralUUID);
 }
+
+#ifdef __cplusplus
+}
+#endif

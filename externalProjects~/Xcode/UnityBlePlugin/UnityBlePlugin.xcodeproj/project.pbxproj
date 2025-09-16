@@ -7,9 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		78228A2B2E795B5500AA0269 /* UnityBlePlugin.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 78AF2B862E41CBF000DF2852 /* UnityBlePlugin.framework */; };
+		78228A2C2E795B5500AA0269 /* UnityBlePlugin.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 78AF2B862E41CBF000DF2852 /* UnityBlePlugin.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		783215312E41CC6200E1343B /* CoreBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 783215302E41CC6200E1343B /* CoreBluetooth.framework */; };
 		7832158C2E449CFC00E1343B /* CoreBluetooth.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7832158B2E449CFC00E1343B /* CoreBluetooth.framework */; };
-		78F2E2A52E45EF5400AF4687 /* UnityBlePlugin.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 78AF2B862E41CBF000DF2852 /* UnityBlePlugin.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,6 +30,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
+				78228A2C2E795B5500AA0269 /* UnityBlePlugin.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -90,8 +92,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				78F2E2A52E45EF5400AF4687 /* UnityBlePlugin.framework in Frameworks */,
 				7832158C2E449CFC00E1343B /* CoreBluetooth.framework in Frameworks */,
+				78228A2B2E795B5500AA0269 /* UnityBlePlugin.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -273,6 +275,7 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSPrincipalClass = "";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
+				LD_RUNPATH_SEARCH_PATHS = "@loader_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yutamiura.UnityBlePluginBundle;
@@ -295,6 +298,7 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSPrincipalClass = "";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Bundles";
+				"LD_RUNPATH_SEARCH_PATHS[arch=*]" = "@loader_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.5;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.yutamiura.UnityBlePluginBundle;
