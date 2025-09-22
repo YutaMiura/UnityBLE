@@ -1,6 +1,4 @@
 
-#if UNITY_ANDROID
-
 using System;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -246,4 +244,3 @@ namespace UnityBLE.Android
 
     }
 }
-#endif
