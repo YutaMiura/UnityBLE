@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace UnityBLE
@@ -6,12 +7,13 @@ namespace UnityBLE
     public interface IBleScanner
     {
         Task InitializeAsync();
-
         Task StartScan(
-            BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered);
+            BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered,
+            CancellationToken cancellationToken);
         Task StartScan(
             ScanFilter filter,
-            BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered);
+            BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered,
+            CancellationToken cancellationToken);
         Task<bool> StopScan();
 
     }

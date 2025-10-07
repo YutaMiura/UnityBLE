@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Threading.Tasks;
 using UnityBle.macOS;
 using UnityEngine;
@@ -12,6 +13,8 @@ namespace UnityBLE.apple
         private readonly AppleBleInitializeCommand _initializeCommand;
 
         DeviceDiscoverReceiver _receiver;
+
+        private CancellationTokenRegistration _ctsRegistration;
 
         public AppleBleScanner()
         {
@@ -31,14 +34,15 @@ namespace UnityBLE.apple
             return _initializeCommand.ExecuteAsync();
         }
 
-        public Task StartScan(BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered)
+        public Task StartScan(BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered, CancellationToken cancellationToken)
         {
             return StartScan(
                 ScanFilter.None,
-                OnDeviceDiscovered);
+                OnDeviceDiscovered,
+                cancellationToken);
         }
 
-        public Task StartScan(ScanFilter filter, BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered)
+        public Task StartScan(ScanFilter filter, BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered, CancellationToken cancellationToken)
         {
             if (_receiver != null)
             {
@@ -47,6 +51,10 @@ namespace UnityBLE.apple
             }
             _receiver = new DeviceDiscoverReceiver(OnDeviceDiscovered);
             _receiver.Start();
+            _ctsRegistration = cancellationToken.Register(() =>
+            {
+                StopScan();
+            });
             _scanCommand.Execute(filter);
             return Task.CompletedTask;
         }
@@ -66,13 +74,14 @@ namespace UnityBLE.apple
                     _receiver.Stop();
                     _receiver = null;
                 }
+                _ctsRegistration.Dispose();
             }
             return Task.FromResult(result);
         }
 
         private class DeviceDiscoverReceiver
         {
-            BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered;
+            readonly BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered;
             public DeviceDiscoverReceiver(BleScanEventDelegates.DeviceDiscoveredDelegate onDeviceDiscovered)
             {
                 OnDeviceDiscovered = onDeviceDiscovered;
@@ -85,6 +94,11 @@ namespace UnityBLE.apple
             public void Stop()
             {
                 BleScanEventDelegates.OnDeviceDiscovered -= OnDeviceDiscovered;
+            }
+
+            private void OnDeviceDiscoveredHandler(IBlePeripheral device)
+            {
+                OnDeviceDiscovered?.Invoke(device);
             }
         }
     }
