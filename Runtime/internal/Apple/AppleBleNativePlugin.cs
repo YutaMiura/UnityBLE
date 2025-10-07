@@ -54,6 +54,9 @@ namespace UnityBLE
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "IsScanning")]
         private static extern bool UnityBLE_IsScanning();
 
+        [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "GetState")]
+        private static extern int UnityBLE_GetState();
+
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "ConnectToPeripheral")]
         private static extern int UnityBLE_ConnectToPeripheral(string peripheralUUID);
 
@@ -355,6 +358,18 @@ namespace UnityBLE
             }
 
             return UnityBLE_IsScanning();
+        }
+
+        public static BleStatus GetBleStatus()
+        {
+            if (!IsInitialized)
+            {
+                throw new InvalidOperationException("Plugin not initialized. Call Initialize() first.");
+            }
+
+            var raw = UnityBLE_GetState();
+            Debug.Log($"[AppleBleNativePlugin] Current BLE state: {raw}");
+            return (BleStatus)raw;
         }
 
         /// <summary>

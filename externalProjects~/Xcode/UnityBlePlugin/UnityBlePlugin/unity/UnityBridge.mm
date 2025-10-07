@@ -32,6 +32,8 @@ void UnityBLE_StopScanning() {
 
 bool UnityBLE_IsScanning() { return [[UnityBridgeFacade shared] isScanning]; }
 
+int UnityBLE_GetState() { return (int)[[UnityBridgeFacade shared] getBleState]; }
+
 int UnityBLE_ConnectToPeripheral(const char *peripheralUUID) {
   NSString *uuidString = [NSString stringWithUTF8String:peripheralUUID];
   NSUUID *uuid = [[NSUUID alloc] initWithUUIDString:uuidString];

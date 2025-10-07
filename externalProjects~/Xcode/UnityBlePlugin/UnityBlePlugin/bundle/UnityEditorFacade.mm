@@ -17,6 +17,7 @@ int UnityBLEBundle_DisconnectFromPeripheral(const char *peripheralUUID) {
 }
 
 bool UnityBLEBundle_IsScanning() { return UnityBLE_IsScanning(); }
+int UnityBLEBundle_GetState() { return UnityBLE_GetState(); }
 
 int UnityBLEBundle_ConnectToPeripheral(const char *peripheralUUID) {
   return UnityBLE_ConnectToPeripheral(peripheralUUID);

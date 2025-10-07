@@ -18,6 +18,11 @@ class BleScanner: NSObject {
         return centralManager.isScanning
     }
 
+    func getState() -> Int {
+        // Return CoreBluetooth manager state as raw integer
+        return centralManager.state.rawValue
+    }
+
     func startScan(_ services: [CBUUID]?, nameFilter: String? = nil) -> Int {
         UnityLogger.log("Start scan with central manager state : \(centralManager.state)")
         if centralManager.isScanning {

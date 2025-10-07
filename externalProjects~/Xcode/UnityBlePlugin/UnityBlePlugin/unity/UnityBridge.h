@@ -40,6 +40,7 @@ int UnityBLE_UnsubscribeFromCharacteristic(const char *peripheralUUID,
                                            const char *serviceUUID,
                                            const char *characteristicUUID);
 bool UnityBLE_IsScanning();
+int UnityBLE_GetState();
 
 void UnityBLE_registerOnPeripheralDiscovered(
     OnPeripheralDiscoveredCallback callback);

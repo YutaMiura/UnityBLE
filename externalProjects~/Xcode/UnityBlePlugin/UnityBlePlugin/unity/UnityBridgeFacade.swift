@@ -16,6 +16,10 @@ import CoreBluetooth
         return bleScanner.isScanning()
     }
 
+    @objc public func getBleState() -> Int {
+        return bleScanner.getState()
+    }
+
     @objc public func startScanning(for services: [CBUUID]?, nameFilter: String? = nil) -> Int {
         return bleScanner.startScan(services, nameFilter: nameFilter)
     }

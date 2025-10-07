@@ -17,6 +17,15 @@ namespace UnityBle.macOS
             }
             BleScanEventDelegates.BLEStatusChanged += OnBLEStatusChanged;
             AppleBleNativePlugin.Initialize();
+
+            // macOS Editor: when already PoweredOn, the status callback may not fire.
+            // Probe by scan capability and complete immediately if possible.
+            if (TryCompleteIfPoweredOn())
+            {
+                BleScanEventDelegates.BLEStatusChanged -= OnBLEStatusChanged;
+                return Task.CompletedTask;
+            }
+
             return _tcs.Task;
         }
 
@@ -42,6 +51,27 @@ namespace UnityBle.macOS
             {
                 BleScanEventDelegates.BLEStatusChanged -= OnBLEStatusChanged;
             }
+        }
+
+        private bool TryCompleteIfPoweredOn()
+        {
+            // State-only check: rely solely on native bridge state.
+            // No scan start/stop probing to avoid side effects.
+            try
+            {
+                var state = AppleBleNativePlugin.GetBleStatus();
+                if (state == BleStatus.PoweredOn)
+                {
+                    _tcs.TrySetResult(true);
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[AppleBleNativePlugin] GetBleStatus failed: {ex.Message}");
+                throw;
+            }
+            return false;
         }
     }
 }
