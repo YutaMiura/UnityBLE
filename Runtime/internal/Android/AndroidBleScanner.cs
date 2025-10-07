@@ -11,6 +11,8 @@ namespace UnityBLE.Android
 
         private CancellationTokenRegistration _ctsRegistration;
 
+        public event Action<bool> OnScanningStateChanged;
+
         public Task InitializeAsync()
         {
             _facade = NativeFacade.Instance;
@@ -22,21 +24,22 @@ namespace UnityBLE.Android
             return StartScan(ScanFilter.None, OnDeviceDiscovered, cancellationToken);
         }
 
-        public Task StartScan(ScanFilter filter, BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered, CancellationToken cancellationToken)
+        public async Task StartScan(ScanFilter filter, BleScanEventDelegates.DeviceDiscoveredDelegate OnDeviceDiscovered, CancellationToken cancellationToken)
         {
             if (_facade == null)
             {
                 Debug.LogError("AndroidBleScanner is not initialized.");
-                return Task.FromException(new InvalidOperationException("AndroidBleScanner is not initialized."));
+                throw new InvalidOperationException("AndroidBleScanner is not initialized.");
             }
             Debug.Log($"AndroidBleScanner.StartScan() called with filter: {filter ?? ScanFilter.None}");
             _ctsRegistration = cancellationToken.Register(() =>
             {
                 StopScan().ConfigureAwait(false);
             });
-            return _facade.StartScan(
+            await _facade.StartScan(
                 filter,
                 OnDeviceDiscovered);
+            OnScanningStateChanged?.Invoke(true);
         }
 
         public async Task<bool> StopScan()
@@ -49,6 +52,10 @@ namespace UnityBLE.Android
 
             Debug.Log("AndroidBleScanner.StopScan() called.");
             var result = await _facade.StopScanAsync();
+            if (result)
+            {
+                OnScanningStateChanged?.Invoke(false);
+            }
             _ctsRegistration.Dispose();
             return result;
         }

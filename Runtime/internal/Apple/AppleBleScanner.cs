@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityBle.macOS;
@@ -15,6 +16,8 @@ namespace UnityBLE.apple
         DeviceDiscoverReceiver _receiver;
 
         private CancellationTokenRegistration _ctsRegistration;
+
+        public event Action<bool> OnScanningStateChanged;
 
         public AppleBleScanner()
         {
@@ -56,6 +59,7 @@ namespace UnityBLE.apple
                 StopScan();
             });
             _scanCommand.Execute(filter);
+            OnScanningStateChanged?.Invoke(true);
             return Task.CompletedTask;
         }
 
@@ -75,6 +79,7 @@ namespace UnityBLE.apple
                     _receiver = null;
                 }
                 _ctsRegistration.Dispose();
+                OnScanningStateChanged?.Invoke(false);
             }
             return Task.FromResult(result);
         }
