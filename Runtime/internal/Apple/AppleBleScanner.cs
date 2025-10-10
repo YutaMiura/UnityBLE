@@ -68,7 +68,8 @@ namespace UnityBLE.apple
             if (!AppleBleNativePlugin.IsScanning())
             {
                 Debug.LogWarning("[UnityBLE] No scan in progress to stop.");
-                return Task.FromResult(false);
+                OnScanningStateChanged?.Invoke(false);
+                return Task.FromResult(true);
             }
             var result = _stopCommand.Execute();
             if (result)
