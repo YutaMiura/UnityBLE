@@ -1,4 +1,3 @@
-#if UNITY_EDITOR_OSX || UNITY_IOS
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -525,5 +524,3 @@ namespace UnityBLE
         }
     }
 }
-
-#endif
