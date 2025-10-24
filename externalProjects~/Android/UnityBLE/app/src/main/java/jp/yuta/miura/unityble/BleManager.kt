@@ -154,7 +154,13 @@ class BleManager private constructor(private val activity: Activity) {
             when (result) {
                 PermissionService.PermissionResult.ReadyForUse -> {
                     try {
-                        device.connectGatt(activity, false, gattCallback)
+                        val gatt = device.connectGatt(activity, false, gattCallback)
+                        if(gatt == null) {
+                            UnityLogger.e("connectGatt returned null for device $address")
+                            unityEventDispatcher.notifyResultForInvokeConnect(UnityBleEventDispatcher.ConnectResult.UNKNOWN)
+                        } else {
+                            UnityLogger.d("connectGatt initiated for device $address, waiting for onConnectionStateChange callback")
+                        }
                     } catch (e: Exception) {
                         UnityLogger.e("Error on connect ${e.message}")
                         unityEventDispatcher.notifyResultForInvokeConnect(UnityBleEventDispatcher.ConnectResult.UNKNOWN)
@@ -174,6 +180,7 @@ class BleManager private constructor(private val activity: Activity) {
     fun disconnect(address: String) {
         UnityLogger.d("Call disconnect with $address.")
         connectedDevices[address]?.close()
+        connectedDevices.remove(address)
     }
 
     @SuppressLint("MissingPermission")
