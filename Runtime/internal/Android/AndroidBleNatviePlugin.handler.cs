@@ -79,6 +79,16 @@ namespace UnityBLE.Android
             {
                 Destroy(gameObject);
             }
+
+            void Awake()
+            {
+                Debug.Log("NativeLogHandler created.");
+            }
+
+            void OnDestroy()
+            {
+                Debug.Log("NativeLogHandler destroyed.");
+            }
         }
 
         private class NativeEventHandler : MonoBehaviour, IDisposable
@@ -287,6 +297,16 @@ namespace UnityBLE.Android
             public void Dispose()
             {
                 Destroy(gameObject);
+            }
+
+            void Awake()
+            {
+                Debug.Log("NativeEventHandler created.");
+            }
+
+            void OnDestroy()
+            {
+                Debug.Log("NativeEventHandler destroyed.");
             }
         }
     }
