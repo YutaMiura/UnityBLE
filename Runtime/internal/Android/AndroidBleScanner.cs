@@ -12,6 +12,13 @@ namespace UnityBLE.Android
         private CancellationTokenRegistration _ctsRegistration;
 
         public event Action<bool> OnScanningStateChanged;
+        private static SynchronizationContext _unityMainThreadContext;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+        private static void CaptureUnityMainThreadContext()
+        {
+            _unityMainThreadContext = SynchronizationContext.Current;
+        }
 
         public Task InitializeAsync()
         {
@@ -34,7 +41,11 @@ namespace UnityBLE.Android
             Debug.Log($"AndroidBleScanner.StartScan() called with filter: {filter ?? ScanFilter.None}");
             _ctsRegistration = cancellationToken.Register(() =>
             {
-                StopScan().ConfigureAwait(false);
+                if (_unityMainThreadContext != null)
+                {
+                    _unityMainThreadContext.Post(_ => _ = StopScan(), null);
+                    return;
+                }
             });
             await _facade.StartScan(
                 filter,
