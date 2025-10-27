@@ -17,7 +17,7 @@
         android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" />
 
-        <!-- For Android10-11, Location permission required for BLE scanning -->
+    <!-- For Android10-11, Location permission required for BLE scanning -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30"/>
 
     <!-- Declare that the app uses Bluetooth LE -->

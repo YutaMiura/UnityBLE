@@ -179,8 +179,7 @@ class BleManager private constructor(private val activity: Activity) {
     @SuppressLint("MissingPermission")
     fun disconnect(address: String) {
         UnityLogger.d("Call disconnect with $address.")
-        connectedDevices[address]?.close()
-        connectedDevices.remove(address)
+        connectedDevices[address]?.disconnect()
     }
 
     @SuppressLint("MissingPermission")
