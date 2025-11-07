@@ -38,7 +38,7 @@ namespace UnityBLE.Android
         {
             lock (startScanLock)
             {
-                if(startScanTask != null && !startScanTask.Task.IsCompleted)
+                if (startScanTask != null && !startScanTask.Task.IsCompleted)
                 {
                     Debug.LogWarning("StartScanAsync called while a previous StartScanAsync is still in progress.");
                     return startScanTask.Task;
@@ -168,7 +168,7 @@ namespace UnityBLE.Android
         {
             lock (readLock)
             {
-                if(readTask != null && !readTask.Task.IsCompleted)
+                if (readTask != null && !readTask.Task.IsCompleted)
                 {
                     Debug.LogWarning("ReadAsync called while a previous ReadAsync is still in progress.");
                     return readTask.Task;
@@ -218,7 +218,7 @@ namespace UnityBLE.Android
         {
             lock (writeLock)
             {
-                if(writeTask != null && !writeTask.Task.IsCompleted)
+                if (writeTask != null && !writeTask.Task.IsCompleted)
                 {
                     Debug.LogWarning("WriteAsync called while a previous WriteAsync is still in progress.");
                     return writeTask.Task;
@@ -226,7 +226,14 @@ namespace UnityBLE.Android
                 writeTask = new TaskCompletionSource<int>();
             }
 
-            BleManagerInstance.Call(METHOD_NAME_WRITE, characteristic.Uuid, characteristic.serviceUUID, characteristic.peripheralUUID, data);
+            var result = BleManagerInstance.Call<int>(METHOD_NAME_WRITE, characteristic.Uuid, characteristic.serviceUUID, characteristic.peripheralUUID, data);
+            if (result != 0)
+            {
+                lock (writeLock)
+                {
+                    writeTask.TrySetException(new Exception($"Failed to write characteristic {characteristic.Uuid} of peripheral {characteristic.peripheralUUID}, error code: {result}"));
+                }
+            }
             return writeTask.Task;
         }
 
@@ -284,7 +291,7 @@ namespace UnityBLE.Android
 
             lock (unsubscribeLock)
             {
-                if(unsubscribeTask != null && !unsubscribeTask.Task.IsCompleted)
+                if (unsubscribeTask != null && !unsubscribeTask.Task.IsCompleted)
                 {
                     Debug.LogWarning("UnsubscribeAsync called while a previous UnsubscribeAsync is still in progress.");
                     return unsubscribeTask.Task;

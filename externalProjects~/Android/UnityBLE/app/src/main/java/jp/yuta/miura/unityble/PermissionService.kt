@@ -68,9 +68,13 @@ class PermissionService (private val activity: Activity){
 
     fun requiredPermissionsForScan(): Array<String> {
         return when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> arrayOf(
-                Manifest.permission.BLUETOOTH_SCAN
-            )
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+                arrayOf(
+                    Manifest.permission.BLUETOOTH_SCAN,
+                    //We are access the device name after the device was found. This operation needs BLUETOOTH_CONNECT permission.
+                    Manifest.permission.BLUETOOTH_CONNECT
+                )
+            }
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> arrayOf(
                 Manifest.permission.ACCESS_FINE_LOCATION
             )
