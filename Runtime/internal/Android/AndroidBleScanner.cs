@@ -20,6 +20,8 @@ namespace UnityBLE.Android
             _unityMainThreadContext = SynchronizationContext.Current;
         }
 
+        public bool IsInitialized => _facade != null;
+
         public Task InitializeAsync()
         {
             _facade = NativeFacade.Instance;

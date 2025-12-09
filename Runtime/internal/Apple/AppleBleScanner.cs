@@ -19,6 +19,8 @@ namespace UnityBLE.apple
 
         public event Action<bool> OnScanningStateChanged;
 
+        public bool IsInitialized => AppleBleNativePlugin.IsInitialized;
+
         public AppleBleScanner()
         {
             _scanCommand = new AppleScanCommand();

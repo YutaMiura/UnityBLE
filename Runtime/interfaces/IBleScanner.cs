@@ -16,6 +16,8 @@ namespace UnityBLE
             CancellationToken cancellationToken);
         Task<bool> StopScan();
 
+        bool IsInitialized { get; }
+
         event Action<bool> OnScanningStateChanged;
 
     }
