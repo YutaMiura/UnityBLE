@@ -264,8 +264,11 @@ class BleManager private constructor(private val activity: Activity) {
         }
 
         val char = gatt.getService(sUUID).getCharacteristic(cUUID)
-        if(!char.isSupportWriteOperation()) {
-            return UnityBleEventDispatcher.WriteResult.OPERATION_NOT_SUPPORTED.ordinal
+        // Prefer WRITE (with response) when available, otherwise fall back to WRITE_NO_RESPONSE.
+        val writeType = when {
+            char.isSupportWriteOperation() -> BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+            char.isSupportWriteWithoutResponseOperation() -> BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
+            else -> return UnityBleEventDispatcher.WriteResult.OPERATION_NOT_SUPPORTED.ordinal
         }
 
         permissionService.ensurePermissionsWithResult(permissionService.requiredPermissionsForConnect()
@@ -275,13 +278,14 @@ class BleManager private constructor(private val activity: Activity) {
                 PermissionService.PermissionResult.ReadyForUse -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         try {
-                            gatt.writeCharacteristic(char, value, BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT)
+                            gatt.writeCharacteristic(char, value, writeType)
                             unityEventDispatcher.notifyOnWrite(from = characteristicUUID, result = UnityBleEventDispatcher.WriteResult.OK)
                         } catch(e: IllegalArgumentException) {
                             UnityLogger.e("Write failed. characteristic may be null.")
                             unityEventDispatcher.notifyOnWrite(from = characteristicUUID, result = UnityBleEventDispatcher.WriteResult.UNKNOWN)
                         }
                     } else {
+                        char.writeType = writeType
                         if(char.setValue(value) && gatt.writeCharacteristic(char)) {
                             unityEventDispatcher.notifyOnWrite(from = characteristicUUID, result = UnityBleEventDispatcher.WriteResult.OK)
                         } else {

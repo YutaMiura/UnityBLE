@@ -46,6 +46,10 @@ namespace UnityBLE.Android
             {
                 properties |= CharacteristicProperties.Write;
             }
+            if (dto.isWritableWithoutResponse)
+            {
+                properties |= CharacteristicProperties.WriteWithoutResponse;
+            }
             if (dto.isNotifiable)
             {
                 properties |= CharacteristicProperties.Notify;
