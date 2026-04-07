@@ -12,6 +12,7 @@ namespace UnityBLE
 
         public bool isReadable;
         public bool isWritable;
+        public bool isWritableWithoutResponse;
         public bool isNotifiable;
     }
 }

@@ -8,6 +8,7 @@ class CharacteristicDTO: Codable {
     let value: String?
     let isReadable: Bool
     let isWritable: Bool
+    let isWritableWithoutResponse: Bool
     let isNotifiable: Bool
 
     init(characteristic: CBCharacteristic) {
@@ -16,6 +17,7 @@ class CharacteristicDTO: Codable {
         self.uuid = characteristic.uuid.uuidString
         self.isReadable = characteristic.properties.contains(.read)
         self.isWritable = characteristic.properties.contains(.write)
+        self.isWritableWithoutResponse = characteristic.properties.contains(.writeWithoutResponse)
         self.isNotifiable = characteristic.properties.contains(.notify)
         self.value = characteristic.value?.base64EncodedString()
     }
@@ -28,6 +30,7 @@ class CharacteristicDTO: Codable {
         case uuid
         case isReadable
         case isWritable
+        case isWritableWithoutResponse
         case isNotifiable
         case value
     }

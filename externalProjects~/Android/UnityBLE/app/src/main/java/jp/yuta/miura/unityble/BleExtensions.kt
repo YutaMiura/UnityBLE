@@ -14,6 +14,10 @@ fun BluetoothGattCharacteristic.isSupportWriteOperation(): Boolean {
     ) != 0
 }
 
+fun BluetoothGattCharacteristic.isSupportWriteWithoutResponseOperation(): Boolean {
+    return this.properties and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE != 0
+}
+
 fun BluetoothGattCharacteristic.isSupportSubscribeOperation():Boolean {
     return this.properties and (
             BluetoothGattCharacteristic.PROPERTY_NOTIFY or BluetoothGattCharacteristic.PROPERTY_INDICATE
