@@ -183,6 +183,25 @@ namespace UnityBLE.Android
                 }
             }
 
+            // Invoked by Kotlin's UnityBleEventDispatcher.notifyOnUpdatedDevice
+            // (Unity SendMessage target "OnPeripheralUpdated"). The advertise
+            // payload of an already-discovered device changed — typically MSD
+            // arrived in SCAN_RSP after the initial frame on chips that
+            // deliver them separately. Update the existing managed instance
+            // in place and raise the managed-side event.
+            public void OnPeripheralUpdated(string deviceJson)
+            {
+                var dto = JsonUtility.FromJson<PeripheralDTO>(deviceJson);
+                if (!_discoveredDevices.TryGetValue(dto.uuid, out var device))
+                {
+                    Debug.LogWarning($"OnPeripheralUpdated: device {dto.uuid} not in discovered list");
+                    return;
+                }
+                device.Rssi = dto.rssi;
+                device.ManufacturerData = dto.manufacturerData ?? string.Empty;
+                BleScanEventDelegates.InvokePeripheralUpdated(device);
+            }
+
             public void OnConnected(string deviceJson)
             {
                 var dto = JsonUtility.FromJson<PeripheralDTO>(deviceJson);

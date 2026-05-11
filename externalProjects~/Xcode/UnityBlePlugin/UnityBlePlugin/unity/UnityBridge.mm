@@ -5,7 +5,7 @@
 #import "UnityBridge.h"
 
 extern "C" {
-int UnityBLE_StartScanning(const char **serviceUUIDs, const char *nameFilter) {
+int UnityBLE_StartScanning(const char **serviceUUIDs, const char *nameFilter, bool allowDuplicates) {
   NSArray<CBUUID *> *uuids = nil;
   if (serviceUUIDs != NULL) {
     NSMutableArray<CBUUID *> *uuidArray = [NSMutableArray array];
@@ -23,7 +23,8 @@ int UnityBLE_StartScanning(const char **serviceUUIDs, const char *nameFilter) {
   }
 
   return (int)[[UnityBridgeFacade shared] startScanningFor:uuids
-                                                nameFilter:nameFilterString];
+                                                nameFilter:nameFilterString
+                                           allowDuplicates:allowDuplicates];
 }
 
 void UnityBLE_StopScanning() {
@@ -137,6 +138,15 @@ int UnityBLE_UnsubscribeFromCharacteristic(const char *peripheralUUID,
 void UnityBLE_registerOnPeripheralDiscovered(
     OnPeripheralDiscoveredCallback callback) {
   [[UnityBridgeFacade shared] registerOnPeripheralDiscovered:^(NSString *json) {
+    if (callback) {
+      callback([json UTF8String]);
+    }
+  }];
+}
+
+void UnityBLE_registerOnPeripheralUpdated(
+    OnPeripheralUpdatedCallback callback) {
+  [[UnityBridgeFacade shared] registerOnPeripheralUpdated:^(NSString *json) {
     if (callback) {
       callback([json UTF8String]);
     }

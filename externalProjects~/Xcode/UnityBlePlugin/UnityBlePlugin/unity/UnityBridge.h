@@ -6,6 +6,7 @@ extern "C" {
 #endif
 
 typedef void (*OnPeripheralDiscoveredCallback)(const char *peripheralDtoJson);
+typedef void (*OnPeripheralUpdatedCallback)(const char *peripheralDtoJson);
 typedef void (*OnPeripheralConnectedCallback)(const char *peripheralUuid);
 typedef void (*OnPeripheralDisconnectedCallback)(const char *peripheralUuid);
 typedef void (*OnBleErrorCallback)(const char *errorJson);
@@ -22,7 +23,7 @@ typedef void (*OnReadRSSICompletedCallback)(int result,
 typedef void (*OnValueReceivedCallback)(const char *peripheralUuid,
                                         const char *valueHex);
 
-int UnityBLE_StartScanning(const char **serviceUUIDs, const char *nameFilter);
+int UnityBLE_StartScanning(const char **serviceUUIDs, const char *nameFilter, bool allowDuplicates);
 void UnityBLE_StopScanning();
 int UnityBLE_ConnectToPeripheral(const char *peripheralUUID);
 int UnityBLE_DisconnectFromPeripheral(const char *peripheralUUID);
@@ -44,6 +45,8 @@ int UnityBLE_GetState();
 
 void UnityBLE_registerOnPeripheralDiscovered(
     OnPeripheralDiscoveredCallback callback);
+void UnityBLE_registerOnPeripheralUpdated(
+    OnPeripheralUpdatedCallback callback);
 void UnityBLE_registerOnPeripheralConnected(
     OnPeripheralConnectedCallback callback);
 void UnityBLE_registerOnPeripheralDisconnected(

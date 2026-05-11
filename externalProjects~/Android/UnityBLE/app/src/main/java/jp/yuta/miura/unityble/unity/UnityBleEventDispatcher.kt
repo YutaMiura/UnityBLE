@@ -21,6 +21,7 @@ class UnityBleEventDispatcher {
     companion object {
         private const val GAME_OBJ_NAME = "AndroidBleEventListener"
         private const val METHOD_NAME_ON_FOUND_DEVICE = "OnDeviceDiscovered"
+        private const val METHOD_NAME_ON_UPDATED_DEVICE = "OnPeripheralUpdated"
         private const val METHOD_NAME_ON_CONNECTED_DEVICE = "OnConnected"
         private const val METHOD_NAME_ON_DISCONNECTED_DEVICE = "OnDisconnected"
         private const val METHOD_NAME_SCAN_RESULT = "OnScanResult"
@@ -129,6 +130,16 @@ class UnityBleEventDispatcher {
         UnityLogger.d("Device found $str")
         handler.post {
             UnityFacade.sendToUnity(GAME_OBJ_NAME, METHOD_NAME_ON_FOUND_DEVICE, str)
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    fun notifyOnUpdatedDevice(device: BluetoothDevice, rssi: Int, scanRecord: ScanRecord? = null) {
+        val dto = device.toDto(rssi, scanRecord)
+        val str = Json.encodeToString(serializer<BleDeviceDTO>(), dto)
+        UnityLogger.d("Device updated $str")
+        handler.post {
+            UnityFacade.sendToUnity(GAME_OBJ_NAME, METHOD_NAME_ON_UPDATED_DEVICE, str)
         }
     }
 

@@ -172,7 +172,7 @@
           {
             "kind": "Function",
             "name": "startScanning",
-            "printedName": "startScanning(for:nameFilter:)",
+            "printedName": "startScanning(for:nameFilter:allowDuplicates:)",
             "children": [
               {
                 "kind": "TypeNominal",
@@ -216,13 +216,20 @@
                 ],
                 "hasDefaultArg": true,
                 "usr": "s:Sq"
+              },
+              {
+                "kind": "TypeNominal",
+                "name": "Bool",
+                "printedName": "Swift.Bool",
+                "hasDefaultArg": true,
+                "usr": "s:Sb"
               }
             ],
             "declKind": "Func",
-            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)startScanningFor:nameFilter:",
-            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC13startScanning3for10nameFilterSiSaySo6CBUUIDCGSg_SSSgtF",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)startScanningFor:nameFilter:allowDuplicates:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC13startScanning3for10nameFilter15allowDuplicatesSiSaySo6CBUUIDCGSg_SSSgSbtF",
             "moduleName": "UnityBlePlugin",
-            "objc_name": "startScanningFor:nameFilter:",
+            "objc_name": "startScanningFor:nameFilter:allowDuplicates:",
             "declAttributes": [
               "AccessControl",
               "ObjC"
@@ -538,6 +545,45 @@
             "declKind": "Func",
             "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnPeripheralDiscovered:",
             "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC30registerOnPeripheralDiscoveredyyySScF",
+            "moduleName": "UnityBlePlugin",
+            "declAttributes": [
+              "AccessControl",
+              "ObjC"
+            ],
+            "funcSelfKind": "NonMutating"
+          },
+          {
+            "kind": "Function",
+            "name": "registerOnPeripheralUpdated",
+            "printedName": "registerOnPeripheralUpdated(_:)",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Void",
+                "printedName": "()"
+              },
+              {
+                "kind": "TypeFunc",
+                "name": "Function",
+                "printedName": "(Swift.String) -> ()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "String",
+                    "printedName": "Swift.String",
+                    "usr": "s:SS"
+                  }
+                ]
+              }
+            ],
+            "declKind": "Func",
+            "usr": "c:@M@UnityBlePlugin@objc(cs)UnityBridgeFacade(im)registerOnPeripheralUpdated:",
+            "mangledName": "$s14UnityBlePlugin0A12BridgeFacadeC27registerOnPeripheralUpdatedyyySScF",
             "moduleName": "UnityBlePlugin",
             "declAttributes": [
               "AccessControl",
@@ -1268,6 +1314,166 @@
                 "declKind": "Accessor",
                 "usr": "s:14UnityBlePlugin0A9DelegatesC22OnPeripheralDiscoveredySScSgvMZ",
                 "mangledName": "$s14UnityBlePlugin0A9DelegatesC22OnPeripheralDiscoveredySScSgvMZ",
+                "moduleName": "UnityBlePlugin",
+                "static": true,
+                "implicit": true,
+                "declAttributes": [
+                  "Final"
+                ],
+                "accessorKind": "_modify"
+              }
+            ]
+          },
+          {
+            "kind": "Var",
+            "name": "OnPeripheralUpdated",
+            "printedName": "OnPeripheralUpdated",
+            "children": [
+              {
+                "kind": "TypeNominal",
+                "name": "Optional",
+                "printedName": "((Swift.String) -> ())?",
+                "children": [
+                  {
+                    "kind": "TypeFunc",
+                    "name": "Function",
+                    "printedName": "(Swift.String) -> ()",
+                    "children": [
+                      {
+                        "kind": "TypeNominal",
+                        "name": "Void",
+                        "printedName": "()"
+                      },
+                      {
+                        "kind": "TypeNominal",
+                        "name": "String",
+                        "printedName": "Swift.String",
+                        "usr": "s:SS"
+                      }
+                    ]
+                  }
+                ],
+                "usr": "s:Sq"
+              }
+            ],
+            "declKind": "Var",
+            "usr": "s:14UnityBlePlugin0A9DelegatesC19OnPeripheralUpdatedySScSgvpZ",
+            "mangledName": "$s14UnityBlePlugin0A9DelegatesC19OnPeripheralUpdatedySScSgvpZ",
+            "moduleName": "UnityBlePlugin",
+            "static": true,
+            "declAttributes": [
+              "HasInitialValue",
+              "Final",
+              "HasStorage",
+              "AccessControl"
+            ],
+            "hasStorage": true,
+            "accessors": [
+              {
+                "kind": "Accessor",
+                "name": "Get",
+                "printedName": "Get()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Optional",
+                    "printedName": "((Swift.String) -> ())?",
+                    "children": [
+                      {
+                        "kind": "TypeFunc",
+                        "name": "Function",
+                        "printedName": "(Swift.String) -> ()",
+                        "children": [
+                          {
+                            "kind": "TypeNominal",
+                            "name": "Void",
+                            "printedName": "()"
+                          },
+                          {
+                            "kind": "TypeNominal",
+                            "name": "String",
+                            "printedName": "Swift.String",
+                            "usr": "s:SS"
+                          }
+                        ]
+                      }
+                    ],
+                    "usr": "s:Sq"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:14UnityBlePlugin0A9DelegatesC19OnPeripheralUpdatedySScSgvgZ",
+                "mangledName": "$s14UnityBlePlugin0A9DelegatesC19OnPeripheralUpdatedySScSgvgZ",
+                "moduleName": "UnityBlePlugin",
+                "static": true,
+                "implicit": true,
+                "declAttributes": [
+                  "Final"
+                ],
+                "accessorKind": "get"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Set",
+                "printedName": "Set()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  },
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Optional",
+                    "printedName": "((Swift.String) -> ())?",
+                    "children": [
+                      {
+                        "kind": "TypeFunc",
+                        "name": "Function",
+                        "printedName": "(Swift.String) -> ()",
+                        "children": [
+                          {
+                            "kind": "TypeNominal",
+                            "name": "Void",
+                            "printedName": "()"
+                          },
+                          {
+                            "kind": "TypeNominal",
+                            "name": "String",
+                            "printedName": "Swift.String",
+                            "usr": "s:SS"
+                          }
+                        ]
+                      }
+                    ],
+                    "usr": "s:Sq"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:14UnityBlePlugin0A9DelegatesC19OnPeripheralUpdatedySScSgvsZ",
+                "mangledName": "$s14UnityBlePlugin0A9DelegatesC19OnPeripheralUpdatedySScSgvsZ",
+                "moduleName": "UnityBlePlugin",
+                "static": true,
+                "implicit": true,
+                "declAttributes": [
+                  "Final"
+                ],
+                "accessorKind": "set"
+              },
+              {
+                "kind": "Accessor",
+                "name": "Modify",
+                "printedName": "Modify()",
+                "children": [
+                  {
+                    "kind": "TypeNominal",
+                    "name": "Void",
+                    "printedName": "()"
+                  }
+                ],
+                "declKind": "Accessor",
+                "usr": "s:14UnityBlePlugin0A9DelegatesC19OnPeripheralUpdatedySScSgvMZ",
+                "mangledName": "$s14UnityBlePlugin0A9DelegatesC19OnPeripheralUpdatedySScSgvMZ",
                 "moduleName": "UnityBlePlugin",
                 "static": true,
                 "implicit": true,
@@ -3427,11 +3633,25 @@
   },
   "ConstValues": [
     {
+      "filePath": "\/Users\/miurayuta\/workspace\/YutaMiura\/UnityBLE\/UnityBLESample\/Assets\/UnityBLE\/externalProjects~\/Xcode\/UnityBlePlugin\/UnityBlePlugin\/unity\/UnityBridgeFacade.swift",
+      "kind": "BooleanLiteral",
+      "offset": 629,
+      "length": 5,
+      "value": "false"
+    },
+    {
       "filePath": "\/Users\/miurayuta\/workspace\/YutaMiura\/UnityBLE\/UnityBLESample\/Assets\/UnityBLE\/externalProjects~\/Xcode\/UnityBlePlugin\/UnityBlePlugin\/BleScanner.swift",
       "kind": "Array",
       "offset": 179,
       "length": 2,
       "value": "[]"
+    },
+    {
+      "filePath": "\/Users\/miurayuta\/workspace\/YutaMiura\/UnityBLE\/UnityBLESample\/Assets\/UnityBLE\/externalProjects~\/Xcode\/UnityBlePlugin\/UnityBlePlugin\/BleScanner.swift",
+      "kind": "BooleanLiteral",
+      "offset": 801,
+      "length": 5,
+      "value": "false"
     }
   ]
 }

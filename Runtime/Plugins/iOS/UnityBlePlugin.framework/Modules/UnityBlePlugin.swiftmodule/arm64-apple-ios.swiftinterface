@@ -13,7 +13,7 @@ import _SwiftConcurrencyShims
   @objc public func isScanning() -> Swift.Bool
   @objc public func getBleState() -> Swift.Int
   #if compiler(>=5.3) && $NonescapableTypes
-  @objc public func startScanning(for services: [CoreBluetooth.CBUUID]?, nameFilter: Swift.String? = nil) -> Swift.Int
+  @objc public func startScanning(for services: [CoreBluetooth.CBUUID]?, nameFilter: Swift.String? = nil, allowDuplicates: Swift.Bool = false) -> Swift.Int
   #endif
   @objc public func stopScanning()
   @objc public func connectToPeripheral(withUUID uuid: Foundation.UUID) -> Swift.Int
@@ -24,6 +24,7 @@ import _SwiftConcurrencyShims
   @objc public func subscribeToCharacteristic(withUUID characteristicUUID: CoreBluetooth.CBUUID, forService serviceUUID: CoreBluetooth.CBUUID, ofPeripheral peripheralUUID: Foundation.UUID) -> Swift.Int
   @objc public func unsubscribeFromCharacteristic(withUUID characteristicUUID: CoreBluetooth.CBUUID, forService serviceUUID: CoreBluetooth.CBUUID, ofPeripheral peripheralUUID: Foundation.UUID) -> Swift.Int
   @objc public func registerOnPeripheralDiscovered(_ callback: @escaping (Swift.String) -> Swift.Void)
+  @objc public func registerOnPeripheralUpdated(_ callback: @escaping (Swift.String) -> Swift.Void)
   @objc public func registerOnPeripheralConnected(_ callback: @escaping (Swift.String) -> Swift.Void)
   @objc public func registerOnPeripheralDisconnected(_ callback: @escaping (Swift.String) -> Swift.Void)
   @objc public func registerOnBleErrorDetected(_ callback: @escaping (Swift.String) -> Swift.Void)
@@ -39,6 +40,7 @@ import _SwiftConcurrencyShims
 }
 @objc @_inheritsConvenienceInitializers public class UnityDelegates : ObjectiveC.NSObject {
   public static var OnPeripheralDiscovered: ((Swift.String) -> Swift.Void)?
+  public static var OnPeripheralUpdated: ((Swift.String) -> Swift.Void)?
   public static var OnDiscoveredPeripheralCleared: (() -> Swift.Void)?
   public static var OnPeripheralConnected: ((Swift.String) -> Swift.Void)?
   public static var OnPeripheralDisconnected: ((Swift.String) -> Swift.Void)?

@@ -5,6 +5,8 @@ public class UnityDelegates: NSObject {
 
     public static var OnPeripheralDiscovered: ((String) -> Void)?
 
+    public static var OnPeripheralUpdated: ((String) -> Void)?
+
     public static var OnDiscoveredPeripheralCleared: (() -> Void)?
 
     public static var OnPeripheralConnected: ((String) -> Void)?
@@ -33,5 +35,15 @@ public class UnityDelegates: NSObject {
             advertisementData: advertisementData)
         guard let json = dto.toJson() else { return }
         OnPeripheralDiscovered?(json)
+    }
+
+    static func notifyPeripheralUpdated(peripheral: CBPeripheral, rssi: NSNumber, advertisementData: [String: Any]? = nil) {
+        let dto = PeripheralDTO(
+            peripheral: peripheral,
+            rssi: rssi,
+            services: peripheral.services,
+            advertisementData: advertisementData)
+        guard let json = dto.toJson() else { return }
+        OnPeripheralUpdated?(json)
     }
 }

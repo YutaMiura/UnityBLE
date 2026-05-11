@@ -19,6 +19,15 @@ namespace UnityBLE.apple
 
         public event Action<bool> OnScanningStateChanged;
 
+        // Forwards the static BleScanEventDelegates.OnPeripheralUpdated to
+        // the instance-level event required by IBleScanner. Subscribed lazily
+        // so the static event isn't held across StartScan invocations.
+        public event BleScanEventDelegates.PeripheralUpdatedDelegate OnPeripheralUpdated
+        {
+            add { BleScanEventDelegates.OnPeripheralUpdated += value; }
+            remove { BleScanEventDelegates.OnPeripheralUpdated -= value; }
+        }
+
         public bool IsInitialized => AppleBleNativePlugin.IsInitialized;
 
         public AppleBleScanner()

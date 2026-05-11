@@ -20,8 +20,8 @@ import CoreBluetooth
         return bleScanner.getState()
     }
 
-    @objc public func startScanning(for services: [CBUUID]?, nameFilter: String? = nil) -> Int {
-        return bleScanner.startScan(services, nameFilter: nameFilter)
+    @objc public func startScanning(for services: [CBUUID]?, nameFilter: String? = nil, allowDuplicates: Bool = false) -> Int {
+        return bleScanner.startScan(services, nameFilter: nameFilter, allowDuplicates: allowDuplicates)
     }
 
     @objc public func stopScanning() {
@@ -99,6 +99,10 @@ import CoreBluetooth
 
     @objc public func registerOnPeripheralDiscovered(_ callback: @escaping (String) -> Void) {
         UnityDelegates.OnPeripheralDiscovered = callback
+    }
+
+    @objc public func registerOnPeripheralUpdated(_ callback: @escaping (String) -> Void) {
+        UnityDelegates.OnPeripheralUpdated = callback
     }
 
     @objc public func registerOnPeripheralConnected(_ callback: @escaping (String) -> Void) {

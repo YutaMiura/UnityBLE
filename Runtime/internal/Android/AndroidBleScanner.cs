@@ -12,6 +12,16 @@ namespace UnityBLE.Android
         private CancellationTokenRegistration _ctsRegistration;
 
         public event Action<bool> OnScanningStateChanged;
+
+        // Forwards the static BleScanEventDelegates.OnPeripheralUpdated to
+        // the instance-level event required by IBleScanner. Subscribers see
+        // updates when an already-discovered peripheral's advertise payload
+        // (typically Manufacturer Specific Data) changes.
+        public event BleScanEventDelegates.PeripheralUpdatedDelegate OnPeripheralUpdated
+        {
+            add { BleScanEventDelegates.OnPeripheralUpdated += value; }
+            remove { BleScanEventDelegates.OnPeripheralUpdated -= value; }
+        }
         private static SynchronizationContext _unityMainThreadContext;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
