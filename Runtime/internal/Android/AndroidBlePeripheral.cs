@@ -12,7 +12,8 @@ namespace UnityBLE.Android
             Rssi = dto.rssi;
             IsConnectable = true; // Assume connectable for testing
             TxPower = 0; // Default value for testing
-            AdvertisingData = string.Empty; // No advertising data in this context
+            AdvertisingData = string.Empty;
+            ManufacturerData = dto.manufacturerData ?? string.Empty;
 
             // Initialize services and characteristics if needed
             _services = new();

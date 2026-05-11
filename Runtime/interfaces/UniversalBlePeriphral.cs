@@ -16,6 +16,11 @@ namespace UnityBLE
         public bool IsConnectable { get; internal set; }
         public int TxPower { get; internal set; }
         public string AdvertisingData { get; internal set; }
+
+        // Base64-encoded Manufacturer Specific Data of the advertisement.
+        // See PeripheralDTO.manufacturerData for the per-platform byte layout.
+        // Empty string when the advertisement has no MSD.
+        public string ManufacturerData { get; internal set; }
         public bool IsConnected => _isConnected;
 
         private bool _isConnected = false;

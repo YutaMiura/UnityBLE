@@ -88,7 +88,7 @@ extension BleScanner: CBCentralManagerDelegate {
         if !discoveredPeripherals.contains(where: { $0.peripheral.identifier == peripheral.identifier }) {
             let device = PeripheralDevice(peripheral: peripheral, rssi: RSSI, centralManager: centralManager)
             discoveredPeripherals.append(device)
-            UnityDelegates.notifyPeripheralDiscovered(peripheral: peripheral, rssi: RSSI)
+            UnityDelegates.notifyPeripheralDiscovered(peripheral: peripheral, rssi: RSSI, advertisementData: advertisementData)
         }
     }
 

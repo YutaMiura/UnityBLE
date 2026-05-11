@@ -458,7 +458,7 @@ class BleManager private constructor(private val activity: Activity) {
             val existingDevice = foundDevices.putIfAbsent(result.device.address, result.device)
             if(existingDevice == null) {
                 // Device was newly added
-                unityEventDispatcher.notifyOnFoundDevice(result.device, result.rssi)
+                unityEventDispatcher.notifyOnFoundDevice(result.device, result.rssi, result.scanRecord)
             }
         }
 
@@ -467,13 +467,13 @@ class BleManager private constructor(private val activity: Activity) {
             if(results.isNullOrEmpty()) {
                 return
             }
-            
+
             for(result in results) {
                 // Thread-safe check and add
                 val existingDevice = foundDevices.putIfAbsent(result.device.address, result.device)
                 if(existingDevice == null) {
                     // Device was newly added
-                    unityEventDispatcher.notifyOnFoundDevice(result.device, result.rssi)
+                    unityEventDispatcher.notifyOnFoundDevice(result.device, result.rssi, result.scanRecord)
                 }
             }
         }

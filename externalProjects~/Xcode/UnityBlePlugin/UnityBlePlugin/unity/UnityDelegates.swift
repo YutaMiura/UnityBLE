@@ -25,8 +25,12 @@ public class UnityDelegates: NSObject {
 
     public static var OnDataReceived: ((String, String) -> Void)?
 
-    static func notifyPeripheralDiscovered(peripheral: CBPeripheral, rssi: NSNumber) {
-        let dto = PeripheralDTO(peripheral: peripheral, rssi: rssi, services: peripheral.services)
+    static func notifyPeripheralDiscovered(peripheral: CBPeripheral, rssi: NSNumber, advertisementData: [String: Any]? = nil) {
+        let dto = PeripheralDTO(
+            peripheral: peripheral,
+            rssi: rssi,
+            services: peripheral.services,
+            advertisementData: advertisementData)
         guard let json = dto.toJson() else { return }
         OnPeripheralDiscovered?(json)
     }

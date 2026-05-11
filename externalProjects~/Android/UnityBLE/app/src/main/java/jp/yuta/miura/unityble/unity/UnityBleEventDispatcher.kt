@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothGattService
+import android.bluetooth.le.ScanRecord
 import android.os.Handler
 import android.os.Looper
 import jp.yuta.miura.unityble.dto.BleDeviceDTO
@@ -122,8 +123,8 @@ class UnityBleEventDispatcher {
     }
 
     @SuppressLint("MissingPermission")
-    fun notifyOnFoundDevice(device: BluetoothDevice, rssi: Int) {
-        val dto = device.toDto(rssi)
+    fun notifyOnFoundDevice(device: BluetoothDevice, rssi: Int, scanRecord: ScanRecord? = null) {
+        val dto = device.toDto(rssi, scanRecord)
         val str = Json.encodeToString(serializer<BleDeviceDTO>(), dto)
         UnityLogger.d("Device found $str")
         handler.post {
