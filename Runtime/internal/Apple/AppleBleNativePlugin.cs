@@ -546,7 +546,7 @@ namespace UnityBLE
                 throw new InvalidOperationException("Plugin not initialized. Call Initialize() first.");
             }
 
-            var result = UnityBLE_UnsubscribeFromCharacteristic(characteristicUUID, serviceUUID, peripheralUUID);
+            var result = UnityBLE_UnsubscribeFromCharacteristic(peripheralUUID, serviceUUID, characteristicUUID);
             if (result != 0)
             {
                 Debug.LogError($"Failed to unsubscribe from characteristic {characteristicUUID} on service {serviceUUID} for device {peripheralUUID}. Error code: {result}");
