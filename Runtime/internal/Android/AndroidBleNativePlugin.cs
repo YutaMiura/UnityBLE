@@ -12,9 +12,14 @@ namespace UnityBLE.Android
 
         internal AndroidBleNativePlugin()
         {
-            BleManagerClass = new AndroidJavaClass(CLASS_BLE_MANAGER);
-            BleManagerInstance = BleManagerClass.CallStatic<AndroidJavaObject>("getInstance");
-            CreateHandlers();
+            // JNI construction (AndroidJavaClass / getInstance) must run on the Unity
+            // main thread; from a background thread it silently fails. See UnityBleMainThread.
+            UnityBleMainThread.Run(() =>
+            {
+                BleManagerClass = new AndroidJavaClass(CLASS_BLE_MANAGER);
+                BleManagerInstance = BleManagerClass.CallStatic<AndroidJavaObject>("getInstance");
+                CreateHandlers();
+            });
             eventReceiver.listener.OnScanResult += ScanResultCallback;
             eventReceiver.listener.OnStopScanResult += StopScanResultCallback;
             eventReceiver.listener.OnReadResult += ReadResultCallback;
@@ -50,7 +55,7 @@ namespace UnityBLE.Android
             var names = new String[] {
                 filter.Name
             };
-            BleManagerInstance.Call(METHOD_NAME_START_SCAN, names, serviceUUIDs);
+            UnityBleMainThread.Run(() => BleManagerInstance.Call(METHOD_NAME_START_SCAN, names, serviceUUIDs));
 
             return startScanTask.Task;
         }
@@ -105,7 +110,7 @@ namespace UnityBLE.Android
             }
 
             Debug.Log("AndroidBleNativePlugin.StopScanAsync() called.");
-            BleManagerInstance.Call(METHOD_NAME_STOP_SCAN);
+            UnityBleMainThread.Run(() => BleManagerInstance.Call(METHOD_NAME_STOP_SCAN));
             Debug.Log("AndroidBleNativePlugin.StopScanAsync() Native method called.");
 
             return stopScanTask.Task;
@@ -151,17 +156,17 @@ namespace UnityBLE.Android
 
         public void Connect(IBlePeripheral device)
         {
-            BleManagerInstance.Call(METHOD_NAME_CONNECT, device.UUID);
+            UnityBleMainThread.Run(() => BleManagerInstance.Call(METHOD_NAME_CONNECT, device.UUID));
         }
 
         public void Disconnect(IBlePeripheral device)
         {
-            BleManagerInstance.Call(METHOD_NAME_DISCONNECT, device.UUID);
+            UnityBleMainThread.Run(() => BleManagerInstance.Call(METHOD_NAME_DISCONNECT, device.UUID));
         }
 
         public void DiscoveryServices(IBlePeripheral device)
         {
-            BleManagerInstance.Call(METHOD_NAME_DISCOVERY_SERVICES, device.UUID);
+            UnityBleMainThread.Run(() => BleManagerInstance.Call(METHOD_NAME_DISCOVERY_SERVICES, device.UUID));
         }
 
         public Task<string> ReadAsync(IBleCharacteristic characteristic)
@@ -176,7 +181,7 @@ namespace UnityBLE.Android
                 readTask = new TaskCompletionSource<string>();
             }
 
-            var result = BleManagerInstance.Call<int>(METHOD_NAME_READ, characteristic.Uuid, characteristic.serviceUUID, characteristic.peripheralUUID);
+            var result = UnityBleMainThread.Run(() => BleManagerInstance.Call<int>(METHOD_NAME_READ, characteristic.Uuid, characteristic.serviceUUID, characteristic.peripheralUUID));
 
             if (result != 0)
             {
@@ -226,7 +231,7 @@ namespace UnityBLE.Android
                 writeTask = new TaskCompletionSource<int>();
             }
 
-            var result = BleManagerInstance.Call<int>(METHOD_NAME_WRITE, characteristic.Uuid, characteristic.serviceUUID, characteristic.peripheralUUID, data);
+            var result = UnityBleMainThread.Run(() => BleManagerInstance.Call<int>(METHOD_NAME_WRITE, characteristic.Uuid, characteristic.serviceUUID, characteristic.peripheralUUID, data));
             if (result != 0)
             {
                 lock (writeLock)
@@ -267,7 +272,7 @@ namespace UnityBLE.Android
             {
                 throw new ArgumentException($"characteristicUuid, serviceUuid, and peripheralUuid must be non-empty {characteristicUuid} {serviceUuid} {peripheralUuid}");
             }
-            var result = BleManagerInstance.Call<int>(METHOD_NAME_SUBSCRIBE, characteristicUuid, serviceUuid, peripheralUuid);
+            var result = UnityBleMainThread.Run(() => BleManagerInstance.Call<int>(METHOD_NAME_SUBSCRIBE, characteristicUuid, serviceUuid, peripheralUuid));
             if (result == 0)
             {
                 return;
@@ -299,7 +304,7 @@ namespace UnityBLE.Android
                 unsubscribeTask = new TaskCompletionSource<int>();
             }
 
-            var result = BleManagerInstance.Call<int>(METHOD_NAME_UNSUBSCRIBE, characteristicUuid, serviceUuid, peripheralUuid);
+            var result = UnityBleMainThread.Run(() => BleManagerInstance.Call<int>(METHOD_NAME_UNSUBSCRIBE, characteristicUuid, serviceUuid, peripheralUuid));
 
             if (result == 2)
             {
@@ -357,8 +362,11 @@ namespace UnityBLE.Android
 
         public void Dispose()
         {
-            BleManagerClass?.Dispose();
-            BleManagerInstance?.Dispose();
+            UnityBleMainThread.Run(() =>
+            {
+                BleManagerClass?.Dispose();
+                BleManagerInstance?.Dispose();
+            });
             BleManagerClass = null;
             BleManagerInstance = null;
             if (logReceiver != null)
