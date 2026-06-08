@@ -315,6 +315,17 @@ namespace UnityBLE.Android
                     unsubscribeTask.TrySetException(new Exception($"Failed to unsubscribe to characteristic {characteristicUuid} of peripheral {peripheralUuid}, error code: {result}"));
                 }
             }
+            else
+            {
+                // Native accepted the unsubscribe request. The native side issues the
+                // CCCD-disable descriptor write but never emits a success callback
+                // (onDescriptorWrite is informational only and notifyOnUnSubscribe fires
+                // only on failure), so there is no completion signal to await — waiting
+                // would hang DisconnectAsync forever. Complete immediately, mirroring the
+                // synchronous fire-and-forget Subscribe() above. Complete outside the lock
+                // to avoid running continuations under it (see WriteResultCallback).
+                unsubscribeTask.TrySetResult(result);
+            }
 
             return unsubscribeTask.Task;
         }
