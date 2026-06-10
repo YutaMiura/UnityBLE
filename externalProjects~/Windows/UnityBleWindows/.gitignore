@@ -1,0 +1,10 @@
+build/
+out/
+*.dll
+*.exp
+*.lib
+*.pdb
+*.ilk
+.vs/
+CMakeCache.txt
+CMakeFiles/

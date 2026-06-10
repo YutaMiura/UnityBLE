@@ -27,7 +27,7 @@ Runtime/
     ├── Android/                    # Android BLE via Java plugin
     ├── iOS/                        # iOS BLE via Objective-C plugin
     ├── macOS/                      # macOS BLE for Unity Editor
-    └── Windows/                    # Windows placeholder
+    └── Windows/                    # Windows BLE via C++/WinRT plugin (Editor + Standalone)
 ```
 
 ## Key Components
@@ -46,6 +46,7 @@ Runtime/
 - **Android**: Java plugin with Unity message passing
 - **iOS**: Objective-C plugin with C# P/Invoke
 - **macOS**: Objective-C++ bundle for Unity Editor testing
+- **Windows**: C++/WinRT DLL with C# P/Invoke (Editor + Standalone)
 
 ## Critical Architecture Notes
 
@@ -69,6 +70,25 @@ clang -dynamiclib -framework CoreBluetooth -framework Foundation -o MacOSBlePlug
    - Set Platform: macOS
    - Enable Editor checkbox
    - Set CPU: AnyCPU
+
+## Windows DLL Build (Required for Editor / Standalone on Windows)
+Source project: `externalProjects~/Windows/UnityBleWindows/` (C++/WinRT).
+A **Windows 10/11 SDK is mandatory** (provides the C++/WinRT headers and
+`WindowsApp.lib`); clang alone is not sufficient.
+
+- clang-cl, no CMake (recommended): run `externalProjects~\Windows\UnityBleWindows\build.bat`
+  → output `build\UnityBleWindows.dll`.
+- CMake (MSVC/clang) from a "x64 Native Tools Command Prompt for VS":
+  ```bat
+  cd externalProjects~\Windows\UnityBleWindows
+  cmake -B build -A x64
+  cmake --build build --config Release
+  ```
+
+Then copy the produced `UnityBleWindows.dll` to
+`Runtime/Plugins/Windows/x86_64/UnityBleWindows.dll` and, in the Unity Plugin
+Inspector, enable **Editor** + **Standalone**, set CPU **x86_64** and Editor OS
+**Windows**. Restart the Editor. See the project README for details.
 
 ## Unity Editor Log Locations
 - **macOS**: `~/Library/Logs/Unity/Editor.log`
@@ -114,12 +134,14 @@ public BleDeviceEvents Events { get; } = new BleDeviceEvents();
 - **Android**: Real device testing required
 - **iOS**: Real device testing required
 - **macOS**: Unity Editor testing with bundle plugin
-- **Windows**: Not currently supported
+- **Windows**: Unity Editor / Standalone testing with the C++/WinRT DLL
 
 ## Native Plugin Dependencies
 - **Android**: Requires BLUETOOTH and BLUETOOTH_ADMIN permissions
 - **iOS**: Requires NSBluetoothAlwaysUsageDescription in Info.plist
 - **macOS**: Requires CoreBluetooth framework access
+- **Windows**: Requires Windows 10 1809+ and a Bluetooth LE radio (WinRT
+  `Windows.Devices.Bluetooth`)
 
 # Common Issues
 
@@ -170,14 +192,15 @@ clang -dynamiclib -framework CoreBluetooth -framework Foundation -o MacOSBlePlug
 - `Runtime/BleManager.cs` - Legacy singleton manager
 
 ## Platform Entry Points
-- `Runtime/internal/Android/AndroidBleDevice.cs`
-- `Runtime/internal/iOS/iOSBleDevice.cs`
-- `Runtime/internal/macOS/MacOSBleDevice.cs`
+- `Runtime/internal/Android/AndroidBleScanner.cs`
+- `Runtime/internal/Apple/AppleBleScanner.cs`
+- `Runtime/internal/Windows/WindowsBleScanner.cs`
 
 ## Native Plugins
-- `Runtime/internal/Android/Plugins/` - Java Android plugin
-- `Runtime/internal/iOS/Plugins/iOSBlePlugin.mm` - iOS Objective-C plugin
-- `Runtime/internal/macOS/Plugins/MacOSBlePlugin.mm` - macOS Objective-C++ plugin
+- `Runtime/Plugins/Android/UnityBLE.aar` - Android (Kotlin); source in `externalProjects~/Android`
+- `Runtime/Plugins/iOS/UnityBlePlugin.framework` - Apple (Swift); source in `externalProjects~/Xcode`
+- `Runtime/Plugins/macOS/UnityBlePluginBundle.bundle` - macOS Editor (Swift); source in `externalProjects~/Xcode`
+- `Runtime/Plugins/Windows/x86_64/UnityBleWindows.dll` - Windows (C++/WinRT); source in `externalProjects~/Windows`
 
 
 # Basics

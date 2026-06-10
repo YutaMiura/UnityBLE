@@ -2,6 +2,8 @@
 using UnityBLE.apple;
 #elif !UNITY_EDITOR && UNITY_ANDROID
 using UnityBLE.Android;
+#elif UNITY_EDITOR_WIN || UNITY_STANDALONE_WIN
+using UnityBLE.windows;
 #else
 using System;
 #endif
@@ -21,8 +23,10 @@ namespace UnityBLE
             Scanner = new AndroidBleScanner();
 #elif UNITY_EDITOR_OSX || UNITY_IOS
             Scanner = new AppleBleScanner();
+#elif UNITY_EDITOR_WIN || (UNITY_STANDALONE_WIN && !UNITY_EDITOR)
+            Scanner = new WindowsBleScanner();
 #elif UNITY_EDITOR_64
-            throw new NotSupportedException("BleManager is not supported in Windows Unity Editor.");
+            throw new NotSupportedException("BleManager is not supported on this Unity Editor platform.");
 #else
             throw new NotSupportedException("BleManager is not supported this platform.");
 #endif
