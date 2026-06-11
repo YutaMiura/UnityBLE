@@ -71,6 +71,9 @@ namespace UnityBLE
                 // Ensure connection state is false if connection fails
                 _isConnected = false;
                 _services.Clear();
+                BleDeviceEvents.OnServicesDiscovered -= OnServiceDiscoveredHandler;
+                BleDeviceEvents.OnConnected -= OnConnected;
+                BleDeviceEvents.OnDisconnected -= OnDisconnected;
                 Debug.LogError($"[UnityBLE] Connection failed for device {UUID}: {ex.Message}");
                 throw;
             }

@@ -5,10 +5,11 @@ using UnityEngine;
 
 namespace UnityBLE.windows
 {
-    public class WindowsDisconnectDeviceCommand
+    public class WindowsDisconnectDeviceCommand : IDisposable
     {
-        private readonly TaskCompletionSource<bool> _completionSource = new TaskCompletionSource<bool>();
+        private readonly TaskCompletionSource<bool> _completionSource = new();
         private readonly IBlePeripheral _device;
+        private bool _disposed;
 
         public WindowsDisconnectDeviceCommand(IBlePeripheral device)
         {
@@ -25,38 +26,59 @@ namespace UnityBLE.windows
             _completionSource.TrySetResult(true);
         }
 
-        ~WindowsDisconnectDeviceCommand()
-        {
-            BleDeviceEvents.OnDisconnected -= OnDisconnected;
-        }
-
-        public Task<bool> ExecuteAsync(IBlePeripheral device, CancellationToken cancellationToken = default)
+        public async Task<bool> ExecuteAsync(IBlePeripheral device, CancellationToken cancellationToken = default)
         {
             if (device == null)
             {
                 Debug.LogError(" Device cannot be null.");
-                return Task.FromResult(false);
+                Dispose();
+                return false;
             }
 
             if (string.IsNullOrEmpty(device.UUID))
             {
                 Debug.LogError(" Device address is not set.");
-                return Task.FromResult(false);
+                Dispose();
+                return false;
             }
 
             if (!device.IsConnected)
             {
                 Debug.LogWarning($" Device {device.UUID} is not connected.");
-                return Task.FromResult(false);
+                Dispose();
+                return false;
             }
 
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+            {
+                Dispose();
+                cancellationToken.ThrowIfCancellationRequested();
+            }
 
             Debug.Log($" Disconnecting from device {device.UUID}...");
 
             WindowsBleNativePlugin.DisconnectFromDevice(device.UUID);
 
-            return _completionSource.Task;
+            try
+            {
+                using var cancellationRegistration = cancellationToken.Register(() => _completionSource.TrySetCanceled());
+                return await _completionSource.Task;
+            }
+            finally
+            {
+                Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            BleDeviceEvents.OnDisconnected -= OnDisconnected;
+            _disposed = true;
         }
     }
 }

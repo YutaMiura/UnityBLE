@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -8,13 +9,14 @@ namespace UnityBLE.windows
     {
         private readonly TaskCompletionSource<IBlePeripheral> _connectionCompletionSource = new();
         private readonly WindowsBlePeripheral _targetDevice;
+        private CancellationTokenRegistration _cancellationRegistration;
 
         public WindowsConnectDeviceCommand(WindowsBlePeripheral targetDevice)
         {
             _targetDevice = targetDevice;
         }
 
-        public Task<IBlePeripheral> ExecuteAsync()
+        public Task<IBlePeripheral> ExecuteAsync(CancellationToken cancellationToken)
         {
             if (_targetDevice == null)
             {
@@ -28,9 +30,11 @@ namespace UnityBLE.windows
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 WindowsBleNativePlugin.StopScan();
                 Debug.Log($" Connecting to device {_targetDevice.UUID}...");
                 BleDeviceEvents.OnConnected += OnDeviceConnected;
+                _cancellationRegistration = cancellationToken.Register(OnConnectionCancelled);
 
                 // Start native connection
                 WindowsBleNativePlugin.ConnectToDevice(_targetDevice.UUID);
@@ -41,6 +45,12 @@ namespace UnityBLE.windows
             catch (OperationCanceledException)
             {
                 Debug.Log($" Connection to device {_targetDevice.UUID} was cancelled.");
+                Cleanup();
+                throw;
+            }
+            catch
+            {
+                Cleanup();
                 throw;
             }
         }
@@ -54,7 +64,30 @@ namespace UnityBLE.windows
                 return;
             }
             _connectionCompletionSource.TrySetResult(device);
+            Cleanup();
+        }
+
+        private void OnConnectionCancelled()
+        {
+            Debug.Log($" Connection to device {_targetDevice.UUID} was cancelled.");
+            Cleanup();
+
+            try
+            {
+                WindowsBleNativePlugin.DisconnectFromDevice(_targetDevice.UUID);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($" Failed to disconnect cancelled device {_targetDevice.UUID}: {ex.Message}");
+            }
+
+            _connectionCompletionSource.TrySetCanceled();
+        }
+
+        private void Cleanup()
+        {
             BleDeviceEvents.OnConnected -= OnDeviceConnected;
+            _cancellationRegistration.Dispose();
         }
     }
 }

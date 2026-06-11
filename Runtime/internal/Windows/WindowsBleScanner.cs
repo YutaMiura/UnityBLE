@@ -54,6 +54,7 @@ namespace UnityBLE.windows
                 _receiver.Stop();
                 _receiver = null;
             }
+            _ctsRegistration.Dispose();
             _receiver = new DeviceDiscoverReceiver(OnDeviceDiscovered);
             _receiver.Start();
             _ctsRegistration = cancellationToken.Register(() =>
@@ -70,6 +71,12 @@ namespace UnityBLE.windows
             if (!WindowsBleNativePlugin.IsScanning())
             {
                 Debug.LogWarning("[UnityBLE] No scan in progress to stop.");
+                if (_receiver != null)
+                {
+                    _receiver.Stop();
+                    _receiver = null;
+                }
+                _ctsRegistration.Dispose();
                 OnScanningStateChanged?.Invoke(false);
                 return Task.FromResult(true);
             }

@@ -187,8 +187,10 @@ namespace UnityBLE
                     }
                 }
 
-                Debug.LogError($"[WindowsBleNativePlugin] Device connected: {dto.uuid} but not found in discovered peripherals.");
-                DisconnectFromDevice(dto.uuid);
+                var connectedDevice = new WindowsBlePeripheral(dto);
+                _discoveredPeripherals.Add(connectedDevice);
+                BleDeviceEvents.InvokeConnected(connectedDevice);
+                Debug.Log($"[WindowsBleNativePlugin] Device connected: {connectedDevice.UUID}");
             });
         }
 

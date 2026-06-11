@@ -37,7 +37,7 @@ namespace UnityBLE.windows
 
         internal override Task<IBlePeripheral> ExecuteConnectAsync(CancellationToken cancellationToken)
         {
-            return new WindowsConnectDeviceCommand(this).ExecuteAsync();
+            return new WindowsConnectDeviceCommand(this).ExecuteAsync(cancellationToken);
         }
 
         internal override Task<bool> ExecuteDisconnectAsync(CancellationToken cancellationToken)

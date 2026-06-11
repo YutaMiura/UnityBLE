@@ -280,6 +280,12 @@ void RemoveDevice(uint64_t addr) {
     }
 }
 
+bool IsActiveContext(uint64_t addr, std::shared_ptr<DeviceContext> const& ctx) {
+    std::lock_guard<std::mutex> lock(g_devMutex);
+    auto it = g_devices.find(addr);
+    return it != g_devices.end() && it->second == ctx;
+}
+
 // Route an incoming characteristic value. If the app has subscribed, forward it
 // immediately; otherwise buffer it so it can be flushed once the app subscribes.
 // This is what lets us capture the GranBoard version message, which is sent
@@ -379,6 +385,11 @@ fire_and_forget ConnectAsync(uint64_t addr) {
 
         // Accessing GATT services forces the connection to be established.
         auto result = co_await device.GetGattServicesAsync(BluetoothCacheMode::Uncached);
+        if (!IsActiveContext(addr, ctx)) {
+            Log("ConnectAsync canceled before GATT services completed for " + AddressToString(addr));
+            co_return;
+        }
+
         if (result.Status() == GattCommunicationStatus::Success &&
             device.ConnectionStatus() == BluetoothConnectionStatus::Connected) {
             ctx->connected = true;
@@ -390,6 +401,10 @@ fire_and_forget ConnectAsync(uint64_t addr) {
             // it cannot interfere with establishing the connection itself.
             try {
                 auto session = co_await GattSession::FromDeviceIdAsync(device.BluetoothDeviceId());
+                if (!IsActiveContext(addr, ctx)) {
+                    Log("ConnectAsync canceled before GattSession completed for " + AddressToString(addr));
+                    co_return;
+                }
                 if (session) {
                     session.MaintainConnection(true);
                     ctx->session = session;
@@ -405,6 +420,10 @@ fire_and_forget ConnectAsync(uint64_t addr) {
             for (auto const& service : result.Services()) {
                 try {
                     auto chResult = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Uncached);
+                    if (!IsActiveContext(addr, ctx)) {
+                        Log("ConnectAsync canceled during characteristic discovery for " + AddressToString(addr));
+                        co_return;
+                    }
                     if (chResult.Status() == GattCommunicationStatus::Success) {
                         for (auto const& ch : chResult.Characteristics()) {
                             std::string charUuid = ToLower(GuidToString(ch.Uuid()));
@@ -418,12 +437,21 @@ fire_and_forget ConnectAsync(uint64_t addr) {
                                 ((props & GattCharacteristicProperties::Indicate) != GattCharacteristicProperties::None);
                             if (notifiable) {
                                 co_await EnableNotifications(ctx, ch, charUuid, addr);
+                                if (!IsActiveContext(addr, ctx)) {
+                                    Log("ConnectAsync canceled while enabling notifications for " + AddressToString(addr));
+                                    co_return;
+                                }
                             }
                         }
                     }
                 } catch (...) {
                     LogError("Pre-enable characteristics failed for a service");
                 }
+            }
+
+            if (!IsActiveContext(addr, ctx)) {
+                Log("ConnectAsync canceled before connected callback for " + AddressToString(addr));
+                co_return;
             }
 
             std::string name = Utf8(device.Name());
