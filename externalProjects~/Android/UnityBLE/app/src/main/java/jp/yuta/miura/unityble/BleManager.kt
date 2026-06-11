@@ -15,7 +15,10 @@ import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.ParcelUuid
@@ -33,6 +36,20 @@ class BleManager private constructor(private val activity: Activity) {
     private val unityEventDispatcher = UnityBleEventDispatcher()
     private val foundDevices: ConcurrentHashMap<String, BluetoothDevice> = ConcurrentHashMap()
     private val connectedDevices: ConcurrentHashMap<String, BluetoothGatt> = ConcurrentHashMap()
+    private val bluetoothStateReceiver = object : BroadcastReceiver() {
+        @SuppressLint("MissingPermission")
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != BluetoothAdapter.ACTION_STATE_CHANGED) {
+                return
+            }
+
+            val state = intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)
+            UnityLogger.d("Bluetooth adapter state changed: $state")
+            if (state == BluetoothAdapter.STATE_TURNING_OFF || state == BluetoothAdapter.STATE_OFF) {
+                disconnectAllDevices("Bluetooth adapter is turning off/off")
+            }
+        }
+    }
 
     companion object  {
         @JvmStatic
@@ -41,6 +58,36 @@ class BleManager private constructor(private val activity: Activity) {
         }
 
         val CCCD: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+    }
+
+    init {
+        val filter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            activity.registerReceiver(bluetoothStateReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            activity.registerReceiver(bluetoothStateReceiver, filter)
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun disconnectAllDevices(reason: String) {
+        UnityLogger.w("$reason. Disconnecting ${connectedDevices.size} BLE device(s).")
+        val devices = connectedDevices.values.toList()
+        connectedDevices.clear()
+
+        for (gatt in devices) {
+            try {
+                unityEventDispatcher.notifyOnDisconnectDevice(gatt)
+            } catch (e: Exception) {
+                UnityLogger.e("Failed to notify disconnected device ${gatt.device.address}: ${e.message}")
+            }
+
+            try {
+                gatt.close()
+            } catch (e: Exception) {
+                UnityLogger.e("Failed to close GATT ${gatt.device.address}: ${e.message}")
+            }
+        }
     }
 
     @SuppressLint("MissingPermission")

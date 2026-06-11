@@ -39,3 +39,21 @@ This libraly has dependencies below so you need add these from gradle.
     ...
     apply plugin ...
    ```
+
+## Windows (Unity Editor / Standalone)
+Windows BLE is provided by a C++/WinRT native DLL (`Windows.Devices.Bluetooth`).
+- Requirements: Windows 10 1809+ with a Bluetooth LE radio, a **Windows 10/11
+  SDK** (mandatory — supplies the C++/WinRT headers and `WindowsApp.lib`), and a
+  C++ compiler (clang-cl or MSVC).
+- Build the DLL from `externalProjects~/Windows/UnityBleWindows/`:
+  ```bat
+  cd externalProjects~\Windows\UnityBleWindows
+  build.bat            REM clang-cl, no CMake (recommended)
+  ```
+  CMake is also supported (`cmake -B build -A x64 && cmake --build build --config Release`).
+- Copy the produced `UnityBleWindows.dll` to
+  `Runtime/Plugins/Windows/x86_64/UnityBleWindows.dll`, then in the Unity Plugin
+  Inspector enable **Editor** + **Standalone**, CPU **x86_64**, Editor OS
+  **Windows**, and restart the Editor.
+
+See `externalProjects~/Windows/UnityBleWindows/README.md` for full details.
