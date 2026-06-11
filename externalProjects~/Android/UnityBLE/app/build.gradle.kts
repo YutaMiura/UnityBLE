@@ -29,10 +29,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_11
     }
     kotlinOptions {
-        JvmTarget.JVM_11
-    }
-    kotlin {
-        jvmToolchain(11)
+        jvmTarget = JvmTarget.JVM_11.target
     }
 }
 

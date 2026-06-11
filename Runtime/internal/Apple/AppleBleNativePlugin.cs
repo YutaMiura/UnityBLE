@@ -186,7 +186,20 @@ namespace UnityBLE
         private static void OnBleStatusChangedCallback(int status)
         {
             Debug.Log($"[AppleBleNativePlugin] BLE status changed: {status}");
-            BleScanEventDelegates.InvokeBLEStatusChanged((BleStatus)status);
+            var bleStatus = (BleStatus)status;
+            BleScanEventDelegates.InvokeBLEStatusChanged(bleStatus);
+            if (bleStatus == BleStatus.PoweredOff || bleStatus == BleStatus.Resetting || bleStatus == BleStatus.UnSupported)
+            {
+                NotifyAllKnownPeripheralsDisconnected();
+            }
+        }
+
+        private static void NotifyAllKnownPeripheralsDisconnected()
+        {
+            foreach (var peripheral in _discoveredPeripherals)
+            {
+                BleDeviceEvents.InvokeDisconnected(peripheral.UUID);
+            }
         }
 
         [MonoPInvokeCallback(typeof(OnClearFoundDevicesDelegate))]
