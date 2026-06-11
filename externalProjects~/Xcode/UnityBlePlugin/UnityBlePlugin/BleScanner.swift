@@ -31,9 +31,7 @@ class BleScanner: NSObject {
         }
         if centralManager.state == .poweredOn {
             self.nameFilter = nameFilter
-            discoveredPeripherals.removeAll { peripheralDevice in
-                peripheralDevice.connectionState == .disconnected
-            }
+            discoveredPeripherals.removeAll()
             UnityDelegates.OnDiscoveredPeripheralCleared?()
             centralManager.scanForPeripherals(withServices: services, options: nil)
             UnityLogger.log("Started scanning for peripherals with services: \(String(describing: services)), nameFilter: \(nameFilter ?? "none")")
@@ -73,6 +71,10 @@ extension BleScanner: CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         UnityLogger.log("Central Manager state updated: \(central.state)")
         UnityDelegates.OnBleStateChanged?(central.state.rawValue)
+        if central.state == .poweredOff || central.state == .resetting || central.state == .unsupported {
+            notifyDisconnectedForKnownPeripherals()
+            discoveredPeripherals.removeAll()
+        }
     }
 
     func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String: Any], rssi RSSI: NSNumber) {
@@ -125,5 +127,16 @@ extension BleScanner: CBCentralManagerDelegate {
         }
         device.connectionState = .disconnected
         UnityDelegates.OnPeripheralDisconnected?(peripheral.identifier.uuidString)
+    }
+
+    private func notifyDisconnectedForKnownPeripherals() {
+        for device in discoveredPeripherals {
+            if device.connectionState == .connected ||
+                device.connectionState == .connecting ||
+                device.connectionState == .disconnecting {
+                device.connectionState = .disconnected
+                UnityDelegates.OnPeripheralDisconnected?(device.peripheral.identifier.uuidString)
+            }
+        }
     }
 }
