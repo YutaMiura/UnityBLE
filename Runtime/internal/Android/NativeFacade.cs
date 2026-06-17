@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -61,10 +62,10 @@ namespace UnityBLE.Android
             }
         }
 
-        public Task<IBlePeripheral> ConnectAsync(AndroidBlePeripheral targetDevice)
+        public Task<IBlePeripheral> ConnectAsync(AndroidBlePeripheral targetDevice, CancellationToken cancellationToken = default)
         {
             var command = new ConnectCommand(targetDevice, Plugin);
-            return command.ExecuteAsync();
+            return command.ExecuteAsync(cancellationToken);
         }
 
         public Task<bool> DiscoverServices(AndroidBlePeripheral peripheral)

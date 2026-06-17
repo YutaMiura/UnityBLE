@@ -41,7 +41,7 @@ namespace UnityBLE.Android
 
         internal override Task<IBlePeripheral> ExecuteConnectAsync(CancellationToken cancellationToken)
         {
-            return NativeFacade.Instance.ConnectAsync(this);
+            return NativeFacade.Instance.ConnectAsync(this, cancellationToken);
         }
 
         internal override Task<bool> ExecuteDisconnectAsync(CancellationToken cancellationToken)
