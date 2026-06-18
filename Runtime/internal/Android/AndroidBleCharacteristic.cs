@@ -113,7 +113,8 @@ namespace UnityBLE.Android
 
         public void Dispose()
         {
-            ;
+            OnDataReceived = null;
+            _ = UnsubscribeAsync();
         }
     }
 }
