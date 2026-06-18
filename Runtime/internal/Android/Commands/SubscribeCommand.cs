@@ -99,16 +99,19 @@ namespace UnityBLE.Android
             try
             {
                 await Plugin.UnsubscribeAsync(_characteristicUuid, _serviceUuid, _peripheralUuid);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"Error unsubscribing from characteristic {_characteristicUuid}: {ex.Message}");
+            }
+            finally
+            {
                 BleDeviceEvents.OnDataReceived -= OnCharacteristicValueReceived;
                 lock (_lock)
                 {
                     _isSubscribed = false;
                     _disposed = true;
                 }
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"Error unsubscribing from characteristic {_characteristicUuid}: {ex.Message}");
             }
         }
     }
