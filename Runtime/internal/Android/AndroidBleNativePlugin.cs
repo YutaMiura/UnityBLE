@@ -28,6 +28,7 @@ namespace UnityBLE.Android
         private TaskCompletionSource<string> readTask;
         private TaskCompletionSource<int> writeTask;
         private TaskCompletionSource<int> unsubscribeTask;
+        private const int StopScanTimeoutMillis = 2000;
 
         private readonly object startScanLock = new object();
         private readonly object stopScanLock = new object();
@@ -94,23 +95,41 @@ namespace UnityBLE.Android
             }
         }
 
-        public Task StopScanAsync()
+        public async Task StopScanAsync()
         {
+            TaskCompletionSource<int> pendingTask;
+            var shouldInvokeNative = false;
             lock (stopScanLock)
             {
                 if (stopScanTask != null && !stopScanTask.Task.IsCompleted)
                 {
                     Debug.LogWarning("StopScanAsync called while a previous StopScanAsync is still in progress.");
-                    return stopScanTask.Task;
+                    pendingTask = stopScanTask;
                 }
-                stopScanTask = new TaskCompletionSource<int>();
+                else
+                {
+                    stopScanTask = new TaskCompletionSource<int>();
+                    pendingTask = stopScanTask;
+                    shouldInvokeNative = true;
+                }
             }
 
-            Debug.Log("AndroidBleNativePlugin.StopScanAsync() called.");
-            BleManagerInstance.Call(METHOD_NAME_STOP_SCAN);
-            Debug.Log("AndroidBleNativePlugin.StopScanAsync() Native method called.");
+            if (shouldInvokeNative)
+            {
+                Debug.Log("AndroidBleNativePlugin.StopScanAsync() called.");
+                BleManagerInstance.Call(METHOD_NAME_STOP_SCAN);
+                Debug.Log("AndroidBleNativePlugin.StopScanAsync() Native method called.");
+            }
 
-            return stopScanTask.Task;
+            var completedTask = await Task.WhenAny(pendingTask.Task, Task.Delay(StopScanTimeoutMillis));
+            if (completedTask == pendingTask.Task)
+            {
+                await pendingTask.Task;
+                return;
+            }
+
+            Debug.LogWarning($"StopScanAsync timed out after {StopScanTimeoutMillis}ms. Continuing as stopped.");
+            pendingTask.TrySetResult(0);
         }
 
         private void StopScanResultCallback(int code)
