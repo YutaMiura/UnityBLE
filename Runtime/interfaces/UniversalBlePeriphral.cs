@@ -89,6 +89,20 @@ namespace UnityBLE
             _isConnected = false;
             Debug.Log($"[UnityBLE] Device {UUID} connection state updated: {_isConnected}");
             OnConnectionStatusChanged?.Invoke(this, _isConnected);
+
+            // Release everything tied to the dropped link. Without this, an unexpected disconnect
+            // (e.g. a link-supervision timeout / status 8) leaves this peripheral subscribed to the
+            // static BleDeviceEvents forever - a zombie that keeps receiving global callbacks for
+            // other devices (logged as "does not match current device UUID") and is never cleaned
+            // up, because a later DisconnectAsync early-returns on !_isConnected.
+            foreach (var service in _services.Values)
+            {
+                service.Dispose();
+            }
+            _services.Clear();
+            BleDeviceEvents.OnServicesDiscovered -= OnServiceDiscoveredHandler;
+            BleDeviceEvents.OnConnected -= OnConnected;
+            BleDeviceEvents.OnDisconnected -= OnDisconnected;
         }
 
         private void OnConnected(IBlePeripheral device)
