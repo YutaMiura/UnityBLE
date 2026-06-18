@@ -1,5 +1,6 @@
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -33,6 +34,7 @@ namespace UnityBLE.Android
         private readonly object readLock = new object();
         private readonly object writeLock = new object();
         private readonly object unsubscribeLock = new object();
+        private readonly SemaphoreSlim unsubscribeSemaphore = new SemaphoreSlim(1, 1);
 
         public Task StartScanAsync(ScanFilter filter)
         {
@@ -282,41 +284,44 @@ namespace UnityBLE.Android
             }
         }
 
-        public Task UnsubscribeAsync(string characteristicUuid, string serviceUuid, string peripheralUuid)
+        public async Task UnsubscribeAsync(string characteristicUuid, string serviceUuid, string peripheralUuid)
         {
             if (string.IsNullOrEmpty(characteristicUuid) || string.IsNullOrEmpty(serviceUuid) || string.IsNullOrEmpty(peripheralUuid))
             {
                 throw new ArgumentException($"characteristicUuid, serviceUuid, and peripheralUuid must be non-empty {characteristicUuid} {serviceUuid} {peripheralUuid}");
             }
 
-            lock (unsubscribeLock)
-            {
-                if (unsubscribeTask != null && !unsubscribeTask.Task.IsCompleted)
-                {
-                    Debug.LogWarning("UnsubscribeAsync called while a previous UnsubscribeAsync is still in progress.");
-                    return unsubscribeTask.Task;
-                }
-                unsubscribeTask = new TaskCompletionSource<int>();
-            }
-
-            var result = BleManagerInstance.Call<int>(METHOD_NAME_UNSUBSCRIBE, characteristicUuid, serviceUuid, peripheralUuid);
-
-            if (result == 2)
+            await unsubscribeSemaphore.WaitAsync();
+            try
             {
                 lock (unsubscribeLock)
                 {
-                    unsubscribeTask.TrySetException(new NotSupportedException($"Failed to subscribe to characteristic {characteristicUuid} of peripheral {peripheralUuid}, error code: {result}"));
+                    unsubscribeTask = new TaskCompletionSource<int>();
                 }
-            }
-            else if (result != 0)
-            {
-                lock (unsubscribeLock)
-                {
-                    unsubscribeTask.TrySetException(new Exception($"Failed to unsubscribe to characteristic {characteristicUuid} of peripheral {peripheralUuid}, error code: {result}"));
-                }
-            }
 
-            return unsubscribeTask.Task;
+                var result = BleManagerInstance.Call<int>(METHOD_NAME_UNSUBSCRIBE, characteristicUuid, serviceUuid, peripheralUuid);
+
+                if (result == 2)
+                {
+                    lock (unsubscribeLock)
+                    {
+                        unsubscribeTask.TrySetException(new NotSupportedException($"Failed to subscribe to characteristic {characteristicUuid} of peripheral {peripheralUuid}, error code: {result}"));
+                    }
+                }
+                else if (result != 0)
+                {
+                    lock (unsubscribeLock)
+                    {
+                        unsubscribeTask.TrySetException(new Exception($"Failed to unsubscribe to characteristic {characteristicUuid} of peripheral {peripheralUuid}, error code: {result}"));
+                    }
+                }
+
+                await unsubscribeTask.Task;
+            }
+            finally
+            {
+                unsubscribeSemaphore.Release();
+            }
         }
 
         private void UnsubscribeResultCallback(string from, int status)
