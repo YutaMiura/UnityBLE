@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -11,6 +12,8 @@ namespace UnityBLE.Android
         public static NativeFacade Instance => _instance ??= new NativeFacade();
 
         private BleScanEventDelegates.DeviceDiscoveredDelegate _onDeviceDiscovered;
+        private readonly object _stopScanLock = new object();
+        private Task<bool> _stopScanTask;
 
         private NativeFacade()
         {
@@ -40,7 +43,21 @@ namespace UnityBLE.Android
             }
         }
 
-        internal async Task<bool> StopScanAsync()
+        internal Task<bool> StopScanAsync()
+        {
+            lock (_stopScanLock)
+            {
+                if (_stopScanTask != null && !_stopScanTask.IsCompleted)
+                {
+                    return _stopScanTask;
+                }
+
+                _stopScanTask = StopScanInternalAsync();
+                return _stopScanTask;
+            }
+        }
+
+        private async Task<bool> StopScanInternalAsync()
         {
             try
             {
@@ -61,10 +78,10 @@ namespace UnityBLE.Android
             }
         }
 
-        public Task<IBlePeripheral> ConnectAsync(AndroidBlePeripheral targetDevice)
+        public Task<IBlePeripheral> ConnectAsync(AndroidBlePeripheral targetDevice, CancellationToken cancellationToken = default)
         {
             var command = new ConnectCommand(targetDevice, Plugin);
-            return command.ExecuteAsync();
+            return command.ExecuteAsync(cancellationToken);
         }
 
         public Task<bool> DiscoverServices(AndroidBlePeripheral peripheral)
@@ -75,6 +92,7 @@ namespace UnityBLE.Android
 
         public Task<bool> DisconnectAsync(AndroidBlePeripheral peripheral)
         {
+            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativeFacade.DisconnectAsync creating command. uuid={peripheral?.UUID}");
             var command = new DisconnectCommand(peripheral, Plugin);
             return command.ExecuteAsync();
         }
@@ -99,6 +117,7 @@ namespace UnityBLE.Android
 
         public Task UnsubscribeAsync(AndroidBleCharacteristic characteristic)
         {
+            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativeFacade.UnsubscribeAsync creating command. characteristic={characteristic?.Uuid}, service={characteristic?.serviceUUID}, peripheral={characteristic?.peripheralUUID}");
             var command = new UnsubscribeCommand(characteristic.peripheralUUID, characteristic.serviceUUID, characteristic.Uuid, Plugin);
             return command.ExecuteAsync();
         }

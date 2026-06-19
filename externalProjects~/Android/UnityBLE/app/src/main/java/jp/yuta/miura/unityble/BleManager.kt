@@ -564,8 +564,16 @@ class BleManager private constructor(private val activity: Activity) {
                     unityEventDispatcher.notifyOnConnectedDevice(gatt)
                 }
                 BluetoothProfile.STATE_DISCONNECTED -> {
-                    connectedDevices[gatt.device.address]?.close()
-                    connectedDevices.remove(gatt.device.address)
+                    val stored = connectedDevices.remove(gatt.device.address)
+                    // Always close the GATT client from this callback. A connection that fails
+                    // before ever reaching STATE_CONNECTED (e.g. status 8 / link supervision
+                    // timeout) is never stored in connectedDevices, so closing only the stored
+                    // instance would leak the BluetoothGatt and degrade the BLE stack over repeated
+                    // reconnect attempts.
+                    gatt.close()
+                    if (stored != null && stored !== gatt) {
+                        stored.close()
+                    }
                     unityEventDispatcher.notifyOnDisconnectDevice(gatt)
                 }
             }

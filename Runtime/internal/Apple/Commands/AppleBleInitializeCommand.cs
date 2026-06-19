@@ -32,6 +32,17 @@ namespace UnityBle.macOS
         private void OnBLEStatusChanged(BleStatus status)
         {
             Debug.Log($"BLE Status Changed: {status}");
+
+            // Transient states reported by CoreBluetooth right after the central manager is
+            // created (e.g. the cold-start "unknown -> resetting -> poweredOn" sequence). These
+            // are NOT failures: CoreBluetooth promises a further state update, so keep waiting
+            // for the definitive state instead of aborting. Treating Resetting/Unknown as fatal
+            // is what made the very first connection attempt fail on every app launch.
+            if (status == BleStatus.Unknown || status == BleStatus.Resetting)
+            {
+                return;
+            }
+
             try
             {
                 if (status == BleStatus.PoweredOn)

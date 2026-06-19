@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+using UnityEngine;
 
 namespace UnityBLE.Android
 {
@@ -41,11 +42,12 @@ namespace UnityBLE.Android
 
         internal override Task<IBlePeripheral> ExecuteConnectAsync(CancellationToken cancellationToken)
         {
-            return NativeFacade.Instance.ConnectAsync(this);
+            return NativeFacade.Instance.ConnectAsync(this, cancellationToken);
         }
 
         internal override Task<bool> ExecuteDisconnectAsync(CancellationToken cancellationToken)
         {
+            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE AndroidBlePeripheral.ExecuteDisconnectAsync called. name={Name}, uuid={UUID}, cancellationRequested={cancellationToken.IsCancellationRequested}");
             return NativeFacade.Instance.DisconnectAsync(this);
         }
     }
