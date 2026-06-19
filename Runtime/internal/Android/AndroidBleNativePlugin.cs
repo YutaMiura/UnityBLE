@@ -177,7 +177,9 @@ namespace UnityBLE.Android
 
         public void Disconnect(IBlePeripheral device)
         {
+            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin.Disconnect calling native. uuid={device?.UUID}");
             BleManagerInstance.Call(METHOD_NAME_DISCONNECT, device.UUID);
+            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin.Disconnect native call returned. uuid={device?.UUID}");
         }
 
         public void DiscoveryServices(IBlePeripheral device)
@@ -305,12 +307,15 @@ namespace UnityBLE.Android
 
         public async Task UnsubscribeAsync(string characteristicUuid, string serviceUuid, string peripheralUuid)
         {
+            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin.UnsubscribeAsync called. characteristic={characteristicUuid}, service={serviceUuid}, peripheral={peripheralUuid}");
             if (string.IsNullOrEmpty(characteristicUuid) || string.IsNullOrEmpty(serviceUuid) || string.IsNullOrEmpty(peripheralUuid))
             {
                 throw new ArgumentException($"characteristicUuid, serviceUuid, and peripheralUuid must be non-empty {characteristicUuid} {serviceUuid} {peripheralUuid}");
             }
 
+            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin waiting unsubscribe semaphore. characteristic={characteristicUuid}");
             await unsubscribeSemaphore.WaitAsync();
+            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin entered unsubscribe semaphore. characteristic={characteristicUuid}");
             try
             {
                 lock (unsubscribeLock)
@@ -318,7 +323,9 @@ namespace UnityBLE.Android
                     unsubscribeTask = new TaskCompletionSource<int>();
                 }
 
+                Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin calling native unsubscribe. characteristic={characteristicUuid}");
                 var result = BleManagerInstance.Call<int>(METHOD_NAME_UNSUBSCRIBE, characteristicUuid, serviceUuid, peripheralUuid);
+                Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin native unsubscribe returned code={result}. characteristic={characteristicUuid}");
 
                 if (result == 2)
                 {
@@ -335,10 +342,13 @@ namespace UnityBLE.Android
                     }
                 }
 
+                Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin waiting unsubscribe callback. characteristic={characteristicUuid}");
                 await unsubscribeTask.Task;
+                Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin unsubscribe task completed. characteristic={characteristicUuid}");
             }
             finally
             {
+                Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin releasing unsubscribe semaphore. characteristic={characteristicUuid}");
                 unsubscribeSemaphore.Release();
             }
         }
@@ -358,6 +368,7 @@ namespace UnityBLE.Android
             }
 
             // Complete the task outside the lock to avoid potential deadlocks
+            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin.UnsubscribeResultCallback received. from={from}, status={status}");
             if (status == 0)
             {
                 taskToComplete.TrySetResult(status);

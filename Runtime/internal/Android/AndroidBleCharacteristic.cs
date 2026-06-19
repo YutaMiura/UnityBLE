@@ -87,6 +87,7 @@ namespace UnityBLE.Android
 
         public async Task UnsubscribeAsync()
         {
+            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE AndroidBleCharacteristic.UnsubscribeAsync called. characteristic={Uuid}, service={serviceUUID}, peripheral={peripheralUUID}");
             if (!Properties.CanNotify())
             {
                 throw new InvalidOperationException($"Characteristic ({Uuid}) does not support notifications");
@@ -98,7 +99,9 @@ namespace UnityBLE.Android
                 return;
             }
 
+            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE AndroidBleCharacteristic calling SubscribeCommand.UnsubscribeAsync. characteristic={Uuid}");
             await _subscribeCommand?.UnsubscribeAsync();
+            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE AndroidBleCharacteristic SubscribeCommand.UnsubscribeAsync returned. characteristic={Uuid}");
         }
 
         public Task WriteAsync(byte[] data, CancellationToken cancellationToken = default)
