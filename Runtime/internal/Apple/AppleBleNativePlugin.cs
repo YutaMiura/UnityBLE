@@ -45,7 +45,7 @@ namespace UnityBLE
 
 
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "StartScanning")]
-        private static extern int UnityBLE_StartScanning(string[] serviceUUIDs, string nameFilter);
+        private static extern int UnityBLE_StartScanning(string[] serviceUUIDs, string nameFilter, bool allowDuplicates);
 
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "StopScanning")]
         private static extern void UnityBLE_StopScanning();
@@ -76,6 +76,9 @@ namespace UnityBLE
 
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "registerOnPeripheralDiscovered")]
         private static extern void UnityBLE_registerOnPeripheralDiscovered(OnPeripheralFoundDelegate callback);
+
+        [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "registerOnPeripheralUpdated")]
+        private static extern void UnityBLE_registerOnPeripheralUpdated(OnPeripheralFoundDelegate callback);
 
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "registerOnPeripheralConnected")]
         private static extern void UnityBLE_registerOnPeripheralConnected(OnConnectedDelegate callback);
@@ -122,6 +125,36 @@ namespace UnityBLE
             var device = new AppleBlePeripheral(dto);
             _discoveredPeripherals.Add(device);
             BleScanEventDelegates.InvokeDeviceDiscovered(device);
+        }
+
+        // Fired by the native plugin when an already-discovered peripheral's
+        // advertisement payload changes (typically when MSD arrives via
+        // SCAN_RSP after the initial ADV_IND). We update the existing
+        // peripheral's mutable fields in place — the consumer still holds the
+        // same IBlePeripheral reference, but its ManufacturerData / Rssi etc
+        // are refreshed — and then raise the managed-side event.
+        [MonoPInvokeCallback(typeof(OnPeripheralFoundDelegate))]
+        private static void OnDeviceUpdatedCallback(string deviceJson)
+        {
+            Debug.Log($"[AppleBleNativePlugin] Device updated: {deviceJson}");
+            var dto = JsonUtility.FromJson<PeripheralDTO>(deviceJson);
+            AppleBlePeripheral target = null;
+            foreach (var p in _discoveredPeripherals)
+            {
+                if (p.UUID == dto.uuid && p is AppleBlePeripheral apple)
+                {
+                    target = apple;
+                    break;
+                }
+            }
+            if (target == null)
+            {
+                Debug.LogWarning($"[AppleBleNativePlugin] Device updated but not found in discovered list: {dto.uuid}");
+                return;
+            }
+            target.Rssi = dto.rssi;
+            target.ManufacturerData = dto.manufacturerData ?? string.Empty;
+            BleScanEventDelegates.InvokePeripheralUpdated(target);
         }
 
         [MonoPInvokeCallback(typeof(OnConnectedDelegate))]
@@ -288,6 +321,7 @@ namespace UnityBLE
 
             //Register callbacks first
             UnityBLE_registerOnPeripheralDiscovered(OnDeviceDiscoveredCallback);
+            UnityBLE_registerOnPeripheralUpdated(OnDeviceUpdatedCallback);
             UnityBLE_registerOnPeripheralConnected(OnDeviceConnectedCallback);
             UnityBLE_registerOnPeripheralDisconnected(OnDeviceDisconnectedCallback);
             UnityBLE_registerOnBleErrorDetected(OnErrorCallback);
@@ -326,11 +360,11 @@ namespace UnityBLE
                 {
                     filter.Name = null;
                 }
-                scanResult = UnityBLE_StartScanning(filter.ServiceUuids, filter.Name);
+                scanResult = UnityBLE_StartScanning(filter.ServiceUuids, filter.Name, filter.ReceiveScanResponse);
             }
             else
             {
-                scanResult = UnityBLE_StartScanning(Array.Empty<string>(), null);
+                scanResult = UnityBLE_StartScanning(Array.Empty<string>(), null, false);
             }
 
             if (scanResult == 1)
@@ -525,7 +559,7 @@ namespace UnityBLE
                 throw new InvalidOperationException("Plugin not initialized. Call Initialize() first.");
             }
 
-            var result = UnityBLE_UnsubscribeFromCharacteristic(characteristicUUID, serviceUUID, peripheralUUID);
+            var result = UnityBLE_UnsubscribeFromCharacteristic(peripheralUUID, serviceUUID, characteristicUUID);
             if (result != 0)
             {
                 Debug.LogError($"Failed to unsubscribe from characteristic {characteristicUUID} on service {serviceUUID} for device {peripheralUUID}. Error code: {result}");

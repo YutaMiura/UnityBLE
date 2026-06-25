@@ -83,30 +83,56 @@ namespace UnityBLE.apple
 
         public bool IsSubscribed => _isSubscribed;
 
+        // Stops receiving notifications without disposing the command. Safe to
+        // call multiple times. Called by AppleBleCharacteristic.UnsubscribeAsync
+        // so the subscribed-state is shared between the explicit unsubscribe
+        // path and the post-disconnect Dispose cleanup — prevents the same
+        // characteristic from being unsubscribed twice (which fails on the
+        // native side once the peripheral has gone away).
+        public void Unsubscribe()
+        {
+            lock (_lock)
+            {
+                if (!_isSubscribed) return;
+                try
+                {
+                    AppleBleNativePlugin.UnsubscribeCharacteristic(_deviceAddress, _serviceUuid, _characteristicUuid);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning($"[AppleSubscribeCharacteristicCommand] Unsubscribe failed: {ex.Message}");
+                }
+                finally
+                {
+                    BleDeviceEvents.OnDataReceived -= OnCharacteristicValueReceived;
+                    _isSubscribed = false;
+                }
+            }
+        }
+
         public void Dispose()
         {
             lock (_lock)
             {
-                if (!_disposed)
+                if (_disposed) return;
+                if (_isSubscribed)
                 {
-                    if (_isSubscribed)
+                    try
                     {
-                        // Try to unsubscribe cleanly
-                        try
-                        {
-                            AppleBleNativePlugin.UnsubscribeCharacteristic(_deviceAddress, _serviceUuid, _characteristicUuid);
-                            BleDeviceEvents.OnDataReceived -= OnCharacteristicValueReceived;
-                            _isSubscribed = false;
-                            _disposed = true;
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.LogWarning($"Error during cleanup unsubscribe: {ex.Message}");
-                        }
+                        AppleBleNativePlugin.UnsubscribeCharacteristic(_deviceAddress, _serviceUuid, _characteristicUuid);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.LogWarning($"Error during cleanup unsubscribe: {ex.Message}");
+                    }
+                    finally
+                    {
+                        BleDeviceEvents.OnDataReceived -= OnCharacteristicValueReceived;
+                        _isSubscribed = false;
                     }
                 }
+                _disposed = true;
             }
-
         }
     }
 }

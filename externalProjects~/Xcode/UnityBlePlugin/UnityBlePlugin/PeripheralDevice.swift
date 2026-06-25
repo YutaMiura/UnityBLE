@@ -7,6 +7,12 @@ class PeripheralDevice: NSObject {
     var rssi: NSNumber
     var connectionState: PeripheralConnectionState = .disconnected
 
+    // Last Manufacturer Specific Data seen during scan. Used by BleScanner
+    // to decide whether the advertisement payload changed enough to fire
+    // OnPeripheralUpdated. Nil until the first advertise frame that carries
+    // MSD is observed; updated each time the MSD bytes differ.
+    var lastManufacturerData: Data? = nil
+
     init(peripheral: CBPeripheral, rssi: NSNumber, centralManager: CBCentralManager) {
         self.peripheral = peripheral
         self.rssi = rssi

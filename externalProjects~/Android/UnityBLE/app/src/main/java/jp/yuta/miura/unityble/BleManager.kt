@@ -35,6 +35,12 @@ class BleManager private constructor(private val activity: Activity) {
     private val permissionService: PermissionService = PermissionService(activity)
     private val unityEventDispatcher = UnityBleEventDispatcher()
     private val foundDevices: ConcurrentHashMap<String, BluetoothDevice> = ConcurrentHashMap()
+
+    // Per-device snapshot of the last Manufacturer Specific Data bytes we
+    // dispatched to Unity. Used by the scan callback to decide between
+    // notifyOnFoundDevice (first sight) and notifyOnUpdatedDevice (MSD
+    // appeared or changed since last notify).
+    private val lastManufacturerData: ConcurrentHashMap<String, ByteArray> = ConcurrentHashMap()
     private val connectedDevices: ConcurrentHashMap<String, BluetoothGatt> = ConcurrentHashMap()
     private val bluetoothStateReceiver = object : BroadcastReceiver() {
         @SuppressLint("MissingPermission")
@@ -118,6 +124,7 @@ class BleManager private constructor(private val activity: Activity) {
                 PermissionService.PermissionResult.ReadyForUse -> {
                     try {
                         foundDevices.clear() // Clear discovered devices when stopping scan
+                        lastManufacturerData.clear()
                         unityEventDispatcher.notifyOnClearFoundDevices()
                         if(filters.isEmpty()) {
                             UnityLogger.d("Start scan. with no filter.")
@@ -501,12 +508,7 @@ class BleManager private constructor(private val activity: Activity) {
             if(result == null) {
                 return
             }
-            // Thread-safe check and add
-            val existingDevice = foundDevices.putIfAbsent(result.device.address, result.device)
-            if(existingDevice == null) {
-                // Device was newly added
-                unityEventDispatcher.notifyOnFoundDevice(result.device, result.rssi)
-            }
+            handleScanResult(result)
         }
 
         override fun onBatchScanResults(results: MutableList<ScanResult>?) {
@@ -514,15 +516,62 @@ class BleManager private constructor(private val activity: Activity) {
             if(results.isNullOrEmpty()) {
                 return
             }
-            
+
             for(result in results) {
-                // Thread-safe check and add
-                val existingDevice = foundDevices.putIfAbsent(result.device.address, result.device)
-                if(existingDevice == null) {
-                    // Device was newly added
-                    unityEventDispatcher.notifyOnFoundDevice(result.device, result.rssi)
-                }
+                handleScanResult(result)
             }
+        }
+
+        // Dispatches either notifyOnFoundDevice (first sight) or
+        // notifyOnUpdatedDevice (MSD bytes changed since last notify). On
+        // Android the BLE stack typically merges ADV_IND + SCAN_RSP before
+        // the first onScanResult, but some chips deliver them as separate
+        // callbacks. Tracking the last-seen MSD makes the behavior robust
+        // across both cases (and matches the iOS path's semantics).
+        private fun handleScanResult(result: ScanResult) {
+            val address = result.device.address
+            val newMsd = extractMsdBytes(result.scanRecord)
+
+            val existingDevice = foundDevices.putIfAbsent(address, result.device)
+            if (existingDevice == null) {
+                if (newMsd != null) lastManufacturerData[address] = newMsd
+                unityEventDispatcher.notifyOnFoundDevice(result.device, result.rssi, result.scanRecord)
+                return
+            }
+
+            // Already-known device. Only fire updated event when MSD content
+            // genuinely changed (treat null->null and identical bytes as no-op
+            // to avoid drowning Unity in duplicate notifications).
+            val oldMsd = lastManufacturerData[address]
+            if (!byteArraysEqual(oldMsd, newMsd)) {
+                if (newMsd != null) {
+                    lastManufacturerData[address] = newMsd
+                } else {
+                    lastManufacturerData.remove(address)
+                }
+                unityEventDispatcher.notifyOnUpdatedDevice(result.device, result.rssi, result.scanRecord)
+            }
+        }
+
+        private fun extractMsdBytes(record: android.bluetooth.le.ScanRecord?): ByteArray? {
+            val msd = record?.manufacturerSpecificData ?: return null
+            if (msd.size() == 0) return null
+            val out = java.io.ByteArrayOutputStream()
+            for (i in 0 until msd.size()) {
+                val companyId = msd.keyAt(i)
+                val payload = msd.valueAt(i) ?: continue
+                out.write(companyId and 0xFF)
+                out.write((companyId shr 8) and 0xFF)
+                out.write(payload)
+            }
+            val bytes = out.toByteArray()
+            return if (bytes.isEmpty()) null else bytes
+        }
+
+        private fun byteArraysEqual(a: ByteArray?, b: ByteArray?): Boolean {
+            if (a === b) return true
+            if (a == null || b == null) return false
+            return a.contentEquals(b)
         }
 
         override fun onScanFailed(errorCode: Int) {

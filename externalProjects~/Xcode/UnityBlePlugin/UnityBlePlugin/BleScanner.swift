@@ -23,7 +23,7 @@ class BleScanner: NSObject {
         return centralManager.state.rawValue
     }
 
-    func startScan(_ services: [CBUUID]?, nameFilter: String? = nil) -> Int {
+    func startScan(_ services: [CBUUID]?, nameFilter: String? = nil, allowDuplicates: Bool = false) -> Int {
         UnityLogger.log("Start scan with central manager state : \(centralManager.state)")
         if centralManager.isScanning {
             UnityLogger.log("Already scanning")
@@ -33,8 +33,15 @@ class BleScanner: NSObject {
             self.nameFilter = nameFilter
             discoveredPeripherals.removeAll()
             UnityDelegates.OnDiscoveredPeripheralCleared?()
-            centralManager.scanForPeripherals(withServices: services, options: nil)
-            UnityLogger.log("Started scanning for peripherals with services: \(String(describing: services)), nameFilter: \(nameFilter ?? "none")")
+            // allowDuplicates=true delivers every advertise frame, which is
+            // required to pick up Manufacturer Specific Data that arrives in
+            // SCAN_RSP (the second BLE advertise packet). Off by default to
+            // keep callback frequency low; opt in via ScanFilter.ReceiveScanResponse.
+            let options: [String: Any] = allowDuplicates
+                ? [CBCentralManagerScanOptionAllowDuplicatesKey: true]
+                : [:]
+            centralManager.scanForPeripherals(withServices: services, options: options)
+            UnityLogger.log("Started scanning for peripherals with services: \(String(describing: services)), nameFilter: \(nameFilter ?? "none"), allowDuplicates: \(allowDuplicates)")
             return 0
         } else if centralManager.state == .poweredOff {
             return -1
@@ -87,11 +94,26 @@ extension BleScanner: CBCentralManagerDelegate {
             }
         }
 
-        if !discoveredPeripherals.contains(where: { $0.peripheral.identifier == peripheral.identifier }) {
-            let device = PeripheralDevice(peripheral: peripheral, rssi: RSSI, centralManager: centralManager)
-            discoveredPeripherals.append(device)
-            UnityDelegates.notifyPeripheralDiscovered(peripheral: peripheral, rssi: RSSI)
+        let msdData = advertisementData[CBAdvertisementDataManufacturerDataKey] as? Data
+
+        if let existing = discoveredPeripherals.first(where: { $0.peripheral.identifier == peripheral.identifier }) {
+            // Already-known peripheral. Fire OnPeripheralUpdated only when the
+            // advertisement payload changed in a meaningful way — currently
+            // gated on Manufacturer Specific Data appearing or differing.
+            // (Adding service-data / name change detection here later is a
+            // pure addition, no behavior change for existing subscribers.)
+            existing.rssi = RSSI
+            if msdData != existing.lastManufacturerData {
+                existing.lastManufacturerData = msdData
+                UnityDelegates.notifyPeripheralUpdated(peripheral: peripheral, rssi: RSSI, advertisementData: advertisementData)
+            }
+            return
         }
+
+        let device = PeripheralDevice(peripheral: peripheral, rssi: RSSI, centralManager: centralManager)
+        device.lastManufacturerData = msdData
+        discoveredPeripherals.append(device)
+        UnityDelegates.notifyPeripheralDiscovered(peripheral: peripheral, rssi: RSSI, advertisementData: advertisementData)
     }
 
     func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {

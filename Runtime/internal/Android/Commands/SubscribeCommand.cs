@@ -89,39 +89,32 @@ namespace UnityBLE.Android
 
         public async Task UnsubscribeAsync()
         {
-            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE SubscribeCommand.UnsubscribeAsync called. characteristic={_characteristicUuid}, service={_serviceUuid}, peripheral={_peripheralUuid}, disposed={_disposed}, subscribed={_isSubscribed}");
             if (_disposed)
             {
-                Debug.LogWarning($"[GranBoardDisconnect] UnityBLE SubscribeCommand.UnsubscribeAsync skipped: disposed. characteristic={_characteristicUuid}");
                 return;
             }
             if (!_isSubscribed)
             {
                 _disposed = true;
-                Debug.LogWarning($"[GranBoardDisconnect] UnityBLE SubscribeCommand.UnsubscribeAsync skipped: not subscribed. characteristic={_characteristicUuid}");
                 return;
             }
 
             try
             {
-                Debug.LogWarning($"[GranBoardDisconnect] UnityBLE SubscribeCommand calling plugin UnsubscribeAsync. characteristic={_characteristicUuid}");
                 await Plugin.UnsubscribeAsync(_characteristicUuid, _serviceUuid, _peripheralUuid);
-                Debug.LogWarning($"[GranBoardDisconnect] UnityBLE SubscribeCommand plugin UnsubscribeAsync returned. characteristic={_characteristicUuid}");
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Debug.LogWarning($"[GranBoardDisconnect] UnityBLE SubscribeCommand plugin UnsubscribeAsync threw {ex.GetType().Name}: {ex.Message}. characteristic={_characteristicUuid}");
+                // Best-effort unsubscribe; swallow so the finally-block cleanup always runs.
             }
             finally
             {
-                Debug.LogWarning($"[GranBoardDisconnect] UnityBLE SubscribeCommand cleanup starting. characteristic={_characteristicUuid}");
                 BleDeviceEvents.OnDataReceived -= OnCharacteristicValueReceived;
                 lock (_lock)
                 {
                     _isSubscribed = false;
                     _disposed = true;
                 }
-                Debug.LogWarning($"[GranBoardDisconnect] UnityBLE SubscribeCommand cleanup completed. characteristic={_characteristicUuid}");
             }
         }
     }

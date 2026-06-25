@@ -6,8 +6,9 @@ extern "C" {
 #endif
 
 int UnityBLEBundle_StartScanning(const char **serviceUUIDs,
-                                 const char *nameFilter) {
-  return UnityBLE_StartScanning(serviceUUIDs, nameFilter);
+                                 const char *nameFilter,
+                                 bool allowDuplicates) {
+  return UnityBLE_StartScanning(serviceUUIDs, nameFilter, allowDuplicates);
 }
 
 void UnityBLEBundle_StopScanning() { UnityBLE_StopScanning(); }
@@ -55,6 +56,11 @@ int UnityBLEBundle_UnsubscribeFromCharacteristic(
 void UnityBLEBundle_registerOnPeripheralDiscovered(
     OnPeripheralDiscoveredCallback callback) {
   UnityBLE_registerOnPeripheralDiscovered(callback);
+}
+
+void UnityBLEBundle_registerOnPeripheralUpdated(
+    OnPeripheralUpdatedCallback callback) {
+  UnityBLE_registerOnPeripheralUpdated(callback);
 }
 
 void UnityBLEBundle_registerOnPeripheralConnected(

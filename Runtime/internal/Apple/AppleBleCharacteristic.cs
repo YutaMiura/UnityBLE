@@ -104,16 +104,11 @@ namespace UnityBLE
                 return Task.CompletedTask;
             }
 
-            var unsubscribeCommand = new AppleUnsubscribeCharacteristicCommand(peripheralUUID, serviceUUID, Uuid);
-            try
-            {
-                unsubscribeCommand.Execute();
-                return Task.CompletedTask;
-            }
-            finally
-            {
-                unsubscribeCommand.Dispose();
-            }
+            // Reuse the subscribe command so _isSubscribed flips to false here;
+            // otherwise the post-disconnect Dispose path would attempt a second
+            // unsubscribe against a peripheral that no longer exists.
+            _subscribeCommand.Unsubscribe();
+            return Task.CompletedTask;
         }
 
         public void Dispose()

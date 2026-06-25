@@ -1,6 +1,5 @@
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -13,9 +12,14 @@ namespace UnityBLE.Android
 
         internal AndroidBleNativePlugin()
         {
-            BleManagerClass = new AndroidJavaClass(CLASS_BLE_MANAGER);
-            BleManagerInstance = BleManagerClass.CallStatic<AndroidJavaObject>("getInstance");
-            CreateHandlers();
+            // JNI construction (AndroidJavaClass / getInstance) must run on the Unity
+            // main thread; from a background thread it silently fails. See UnityBleMainThread.
+            UnityBleMainThread.Run(() =>
+            {
+                BleManagerClass = new AndroidJavaClass(CLASS_BLE_MANAGER);
+                BleManagerInstance = BleManagerClass.CallStatic<AndroidJavaObject>("getInstance");
+                CreateHandlers();
+            });
             eventReceiver.listener.OnScanResult += ScanResultCallback;
             eventReceiver.listener.OnStopScanResult += StopScanResultCallback;
             eventReceiver.listener.OnReadResult += ReadResultCallback;
@@ -35,7 +39,6 @@ namespace UnityBLE.Android
         private readonly object readLock = new object();
         private readonly object writeLock = new object();
         private readonly object unsubscribeLock = new object();
-        private readonly SemaphoreSlim unsubscribeSemaphore = new SemaphoreSlim(1, 1);
 
         public Task StartScanAsync(ScanFilter filter)
         {
@@ -53,7 +56,7 @@ namespace UnityBLE.Android
             var names = new String[] {
                 filter.Name
             };
-            BleManagerInstance.Call(METHOD_NAME_START_SCAN, names, serviceUUIDs);
+            UnityBleMainThread.Run(() => BleManagerInstance.Call(METHOD_NAME_START_SCAN, names, serviceUUIDs));
 
             return startScanTask.Task;
         }
@@ -114,10 +117,12 @@ namespace UnityBLE.Android
                 }
             }
 
+            // Only the first (non-coalesced) caller invokes native stopScan; concurrent
+            // callers piggyback on the same pending task. JNI must run on the main thread.
             if (shouldInvokeNative)
             {
                 Debug.Log("AndroidBleNativePlugin.StopScanAsync() called.");
-                BleManagerInstance.Call(METHOD_NAME_STOP_SCAN);
+                UnityBleMainThread.Run(() => BleManagerInstance.Call(METHOD_NAME_STOP_SCAN));
                 Debug.Log("AndroidBleNativePlugin.StopScanAsync() Native method called.");
             }
 
@@ -172,19 +177,17 @@ namespace UnityBLE.Android
 
         public void Connect(IBlePeripheral device)
         {
-            BleManagerInstance.Call(METHOD_NAME_CONNECT, device.UUID);
+            UnityBleMainThread.Run(() => BleManagerInstance.Call(METHOD_NAME_CONNECT, device.UUID));
         }
 
         public void Disconnect(IBlePeripheral device)
         {
-            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin.Disconnect calling native. uuid={device?.UUID}");
-            BleManagerInstance.Call(METHOD_NAME_DISCONNECT, device.UUID);
-            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin.Disconnect native call returned. uuid={device?.UUID}");
+            UnityBleMainThread.Run(() => BleManagerInstance.Call(METHOD_NAME_DISCONNECT, device.UUID));
         }
 
         public void DiscoveryServices(IBlePeripheral device)
         {
-            BleManagerInstance.Call(METHOD_NAME_DISCOVERY_SERVICES, device.UUID);
+            UnityBleMainThread.Run(() => BleManagerInstance.Call(METHOD_NAME_DISCOVERY_SERVICES, device.UUID));
         }
 
         public Task<string> ReadAsync(IBleCharacteristic characteristic)
@@ -199,7 +202,7 @@ namespace UnityBLE.Android
                 readTask = new TaskCompletionSource<string>();
             }
 
-            var result = BleManagerInstance.Call<int>(METHOD_NAME_READ, characteristic.Uuid, characteristic.serviceUUID, characteristic.peripheralUUID);
+            var result = UnityBleMainThread.Run(() => BleManagerInstance.Call<int>(METHOD_NAME_READ, characteristic.Uuid, characteristic.serviceUUID, characteristic.peripheralUUID));
 
             if (result != 0)
             {
@@ -249,7 +252,7 @@ namespace UnityBLE.Android
                 writeTask = new TaskCompletionSource<int>();
             }
 
-            var result = BleManagerInstance.Call<int>(METHOD_NAME_WRITE, characteristic.Uuid, characteristic.serviceUUID, characteristic.peripheralUUID, data);
+            var result = UnityBleMainThread.Run(() => BleManagerInstance.Call<int>(METHOD_NAME_WRITE, characteristic.Uuid, characteristic.serviceUUID, characteristic.peripheralUUID, data));
             if (result != 0)
             {
                 lock (writeLock)
@@ -290,7 +293,7 @@ namespace UnityBLE.Android
             {
                 throw new ArgumentException($"characteristicUuid, serviceUuid, and peripheralUuid must be non-empty {characteristicUuid} {serviceUuid} {peripheralUuid}");
             }
-            var result = BleManagerInstance.Call<int>(METHOD_NAME_SUBSCRIBE, characteristicUuid, serviceUuid, peripheralUuid);
+            var result = UnityBleMainThread.Run(() => BleManagerInstance.Call<int>(METHOD_NAME_SUBSCRIBE, characteristicUuid, serviceUuid, peripheralUuid));
             if (result == 0)
             {
                 return;
@@ -305,52 +308,52 @@ namespace UnityBLE.Android
             }
         }
 
-        public async Task UnsubscribeAsync(string characteristicUuid, string serviceUuid, string peripheralUuid)
+        public Task UnsubscribeAsync(string characteristicUuid, string serviceUuid, string peripheralUuid)
         {
-            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin.UnsubscribeAsync called. characteristic={characteristicUuid}, service={serviceUuid}, peripheral={peripheralUuid}");
             if (string.IsNullOrEmpty(characteristicUuid) || string.IsNullOrEmpty(serviceUuid) || string.IsNullOrEmpty(peripheralUuid))
             {
                 throw new ArgumentException($"characteristicUuid, serviceUuid, and peripheralUuid must be non-empty {characteristicUuid} {serviceUuid} {peripheralUuid}");
             }
 
-            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin waiting unsubscribe semaphore. characteristic={characteristicUuid}");
-            await unsubscribeSemaphore.WaitAsync();
-            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin entered unsubscribe semaphore. characteristic={characteristicUuid}");
-            try
+            lock (unsubscribeLock)
+            {
+                if (unsubscribeTask != null && !unsubscribeTask.Task.IsCompleted)
+                {
+                    Debug.LogWarning("UnsubscribeAsync called while a previous UnsubscribeAsync is still in progress.");
+                    return unsubscribeTask.Task;
+                }
+                unsubscribeTask = new TaskCompletionSource<int>();
+            }
+
+            var result = UnityBleMainThread.Run(() => BleManagerInstance.Call<int>(METHOD_NAME_UNSUBSCRIBE, characteristicUuid, serviceUuid, peripheralUuid));
+
+            if (result == 2)
             {
                 lock (unsubscribeLock)
                 {
-                    unsubscribeTask = new TaskCompletionSource<int>();
+                    unsubscribeTask.TrySetException(new NotSupportedException($"Failed to subscribe to characteristic {characteristicUuid} of peripheral {peripheralUuid}, error code: {result}"));
                 }
-
-                Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin calling native unsubscribe. characteristic={characteristicUuid}");
-                var result = BleManagerInstance.Call<int>(METHOD_NAME_UNSUBSCRIBE, characteristicUuid, serviceUuid, peripheralUuid);
-                Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin native unsubscribe returned code={result}. characteristic={characteristicUuid}");
-
-                if (result == 2)
-                {
-                    lock (unsubscribeLock)
-                    {
-                        unsubscribeTask.TrySetException(new NotSupportedException($"Failed to subscribe to characteristic {characteristicUuid} of peripheral {peripheralUuid}, error code: {result}"));
-                    }
-                }
-                else if (result != 0)
-                {
-                    lock (unsubscribeLock)
-                    {
-                        unsubscribeTask.TrySetException(new Exception($"Failed to unsubscribe to characteristic {characteristicUuid} of peripheral {peripheralUuid}, error code: {result}"));
-                    }
-                }
-
-                Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin waiting unsubscribe callback. characteristic={characteristicUuid}");
-                await unsubscribeTask.Task;
-                Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin unsubscribe task completed. characteristic={characteristicUuid}");
             }
-            finally
+            else if (result != 0)
             {
-                Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin releasing unsubscribe semaphore. characteristic={characteristicUuid}");
-                unsubscribeSemaphore.Release();
+                lock (unsubscribeLock)
+                {
+                    unsubscribeTask.TrySetException(new Exception($"Failed to unsubscribe to characteristic {characteristicUuid} of peripheral {peripheralUuid}, error code: {result}"));
+                }
             }
+            else
+            {
+                // Native accepted the unsubscribe request. The native side issues the
+                // CCCD-disable descriptor write but never emits a success callback
+                // (onDescriptorWrite is informational only and notifyOnUnSubscribe fires
+                // only on failure), so there is no completion signal to await — waiting
+                // would hang DisconnectAsync forever. Complete immediately, mirroring the
+                // synchronous fire-and-forget Subscribe() above. Complete outside the lock
+                // to avoid running continuations under it (see WriteResultCallback).
+                unsubscribeTask.TrySetResult(result);
+            }
+
+            return unsubscribeTask.Task;
         }
 
         private void UnsubscribeResultCallback(string from, int status)
@@ -368,7 +371,6 @@ namespace UnityBLE.Android
             }
 
             // Complete the task outside the lock to avoid potential deadlocks
-            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativePlugin.UnsubscribeResultCallback received. from={from}, status={status}");
             if (status == 0)
             {
                 taskToComplete.TrySetResult(status);
@@ -381,8 +383,11 @@ namespace UnityBLE.Android
 
         public void Dispose()
         {
-            BleManagerClass?.Dispose();
-            BleManagerInstance?.Dispose();
+            UnityBleMainThread.Run(() =>
+            {
+                BleManagerClass?.Dispose();
+                BleManagerInstance?.Dispose();
+            });
             BleManagerClass = null;
             BleManagerInstance = null;
             if (logReceiver != null)

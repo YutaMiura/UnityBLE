@@ -92,7 +92,6 @@ namespace UnityBLE.Android
 
         public Task<bool> DisconnectAsync(AndroidBlePeripheral peripheral)
         {
-            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativeFacade.DisconnectAsync creating command. uuid={peripheral?.UUID}");
             var command = new DisconnectCommand(peripheral, Plugin);
             return command.ExecuteAsync();
         }
@@ -117,7 +116,6 @@ namespace UnityBLE.Android
 
         public Task UnsubscribeAsync(AndroidBleCharacteristic characteristic)
         {
-            Debug.LogWarning($"[GranBoardDisconnect] UnityBLE NativeFacade.UnsubscribeAsync creating command. characteristic={characteristic?.Uuid}, service={characteristic?.serviceUUID}, peripheral={characteristic?.peripheralUUID}");
             var command = new UnsubscribeCommand(characteristic.peripheralUUID, characteristic.serviceUUID, characteristic.Uuid, Plugin);
             return command.ExecuteAsync();
         }

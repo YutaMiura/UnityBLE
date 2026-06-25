@@ -19,6 +19,15 @@ namespace UnityBLE.windows
 
         public event Action<bool> OnScanningStateChanged;
 
+        // Forwards the static BleScanEventDelegates.OnPeripheralUpdated to subscribers,
+        // mirroring AndroidBleScanner / AppleBleScanner. Fires when an already-discovered
+        // peripheral's advertisement payload changes (e.g. MSD arriving in a scan response).
+        public event BleScanEventDelegates.PeripheralUpdatedDelegate OnPeripheralUpdated
+        {
+            add { BleScanEventDelegates.OnPeripheralUpdated += value; }
+            remove { BleScanEventDelegates.OnPeripheralUpdated -= value; }
+        }
+
         public bool IsInitialized => WindowsBleNativePlugin.IsInitialized;
 
         public WindowsBleScanner()

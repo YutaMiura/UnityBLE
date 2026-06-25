@@ -40,6 +40,24 @@ This libraly has dependencies below so you need add these from gradle.
     apply plugin ...
    ```
 
+## Building native artifacts
+
+Native sources live under `externalProjects~/` and the resulting framework /
+bundle / AAR are checked in under `Runtime/Plugins/<platform>/`. A Makefile
+at `BuildTools~/Makefile` rebuilds and reinstalls all three:
+
+```
+make -C BuildTools~ ios       # iOS framework  -> Runtime/Plugins/iOS/
+make -C BuildTools~ macos     # macOS bundle   -> Runtime/Plugins/macOS/
+make -C BuildTools~ android   # Android AAR    -> Runtime/Plugins/Android/
+make -C BuildTools~ all
+make -C BuildTools~ clean
+```
+
+Requires macOS + Xcode for `ios` / `macos`, and JDK 11+ with a configured
+Android SDK for `android` (set `ANDROID_HOME` or populate
+`externalProjects~/Android/UnityBLE/local.properties`).
+
 ## Windows (Unity Editor / Standalone)
 Windows BLE is provided by a C++/WinRT native DLL (`Windows.Devices.Bluetooth`).
 - Requirements: Windows 10 1809+ with a Bluetooth LE radio, a **Windows 10/11
