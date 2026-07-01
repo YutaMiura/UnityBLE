@@ -40,7 +40,7 @@ namespace UnityBLE.apple
 
         internal override Task<IBlePeripheral> ExecuteConnectAsync(CancellationToken cancellationToken)
         {
-            return new AppleConnectDeviceCommand(this).ExecuteAsync();
+            return new AppleConnectDeviceCommand(this).ExecuteAsync(cancellationToken);
         }
 
         internal override Task<bool> ExecuteDisconnectAsync(CancellationToken cancellationToken)

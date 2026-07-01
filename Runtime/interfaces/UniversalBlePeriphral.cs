@@ -23,6 +23,12 @@ namespace UnityBLE
         public string ManufacturerData { get; internal set; }
         public bool IsConnected => _isConnected;
 
+        // The native connect has no timeout of its own on any platform (Android's direct
+        // connectGatt eventually fails with 133, but iOS/CoreBluetooth keeps a pending
+        // connection alive indefinitely). The library therefore always bounds ConnectAsync so
+        // a never-establishing link cannot hang the caller forever.
+        private static readonly TimeSpan DefaultConnectTimeout = TimeSpan.FromSeconds(15);
+
         private bool _isConnected = false;
         internal ConcurrentDictionary<string, IBleService> _services = new();
 
@@ -41,7 +47,13 @@ namespace UnityBLE
             Debug.Log($"[UnityBLE] Initializing UniversalBlePeripheral for {UUID}");
         }
 
-        public async Task ConnectAsync(CancellationToken cancellationToken = default)
+        // Two overloads (rather than one method with an optional TimeSpan?) so expression-tree
+        // call sites - e.g. Moq's Setup(m => m.ConnectAsync(It.IsAny<CancellationToken>())) -
+        // keep compiling: an expression tree may not omit an optional argument (CS0854).
+        public Task ConnectAsync(CancellationToken cancellationToken = default)
+            => ConnectAsync(cancellationToken, DefaultConnectTimeout);
+
+        public async Task ConnectAsync(CancellationToken cancellationToken, TimeSpan timeout)
         {
 
             if (_isConnected)
@@ -52,12 +64,18 @@ namespace UnityBLE
 
             cancellationToken.ThrowIfCancellationRequested();
 
+            // Always bound the connect. The linked token cancels ExecuteConnectAsync on either
+            // a caller cancellation or the library timeout; each platform command honors it, so
+            // a never-establishing link is aborted instead of hanging forever.
+            using var timeoutCts = new CancellationTokenSource(timeout);
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
+
             try
             {
                 BleDeviceEvents.OnConnected += OnConnected;
                 BleDeviceEvents.OnDisconnected += OnDisconnected;
                 BleDeviceEvents.OnServicesDiscovered += OnServiceDiscoveredHandler;
-                var device = await ExecuteConnectAsync(cancellationToken);
+                var device = await ExecuteConnectAsync(linkedCts.Token);
                 if (device == null)
                 {
                     Debug.LogError($"[UnityBLE] Failed to connect to device {UUID}");
@@ -71,7 +89,22 @@ namespace UnityBLE
                     _isConnected = true;
                 }
             }
+            catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+            {
+                // The library timeout fired (not a caller cancellation): surface it as a distinct
+                // TimeoutException so callers can tell "took too long" from "was cancelled".
+                Cleanup();
+                Debug.LogError($"[UnityBLE] Connecting to device {UUID} timed out after {timeout.TotalSeconds}s.");
+                throw new TimeoutException($"Connecting to device {UUID} timed out after {timeout.TotalSeconds}s.");
+            }
             catch (Exception ex)
+            {
+                Cleanup();
+                Debug.LogError($"[UnityBLE] Connection failed for device {UUID}: {ex.Message}");
+                throw;
+            }
+
+            void Cleanup()
             {
                 // Ensure connection state is false if connection fails
                 _isConnected = false;
@@ -79,8 +112,6 @@ namespace UnityBLE
                 BleDeviceEvents.OnServicesDiscovered -= OnServiceDiscoveredHandler;
                 BleDeviceEvents.OnConnected -= OnConnected;
                 BleDeviceEvents.OnDisconnected -= OnDisconnected;
-                Debug.LogError($"[UnityBLE] Connection failed for device {UUID}: {ex.Message}");
-                throw;
             }
         }
 
