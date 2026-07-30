@@ -44,7 +44,8 @@ namespace UnityBLE
 
         // Native function imports
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "StartScanning", CharSet = CharSet.Ansi)]
-        private static extern int UnityBLE_StartScanning(string serviceUuidsCsv, string nameFilter);
+        private static extern int UnityBLE_StartScanning(string serviceUuidsCsv, string nameFilter,
+                                                         int receiveScanResponse);
 
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "StopScanning")]
         private static extern void UnityBLE_StopScanning();
@@ -78,6 +79,9 @@ namespace UnityBLE
 
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "registerOnPeripheralDiscovered")]
         private static extern void UnityBLE_registerOnPeripheralDiscovered(OnPeripheralFoundDelegate callback);
+
+        [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "registerOnPeripheralUpdated")]
+        private static extern void UnityBLE_registerOnPeripheralUpdated(OnPeripheralFoundDelegate callback);
 
         [DllImport(PluginName, EntryPoint = PluginEntryPointPrefix + "registerOnPeripheralConnected")]
         private static extern void UnityBLE_registerOnPeripheralConnected(OnConnectedDelegate callback);
@@ -124,6 +128,7 @@ namespace UnityBLE
         // a freed function pointer. In the Editor (Mono) [MonoPInvokeCallback]
         // does not root them, so this is required for notifications to work.
         private static readonly OnPeripheralFoundDelegate _cbPeripheralFound = OnDeviceDiscoveredCallback;
+        private static readonly OnPeripheralFoundDelegate _cbPeripheralUpdated = OnDeviceUpdatedCallback;
         private static readonly OnConnectedDelegate _cbConnected = OnDeviceConnectedCallback;
         private static readonly OnDisconnectedDelegate _cbDisconnected = OnDeviceDisconnectedCallback;
         private static readonly OnBleErrorDelegate _cbError = OnErrorCallback;
@@ -168,6 +173,37 @@ namespace UnityBLE
                 var device = new WindowsBlePeripheral(dto);
                 _discoveredPeripherals.Add(device);
                 BleScanEventDelegates.InvokeDeviceDiscovered(device);
+            });
+        }
+
+        // Fired by the native plugin when an already-discovered peripheral's
+        // advertisement changes (typically MSD or the LocalName arriving in the
+        // SCAN_RSP after the initial frame). The existing instance is mutated in
+        // place - consumers keep the same IBlePeripheral reference - and then the
+        // managed-side event is raised, matching Apple / Android.
+        [MonoPInvokeCallback(typeof(OnPeripheralFoundDelegate))]
+        private static void OnDeviceUpdatedCallback(string deviceJson)
+        {
+            Dispatch(() =>
+            {
+                var dto = JsonUtility.FromJson<PeripheralDTO>(deviceJson);
+                var device = _discoveredPeripherals.Find(p => p.UUID == dto.uuid)
+                    as UniversalBlePeripheral;
+                if (device == null)
+                {
+                    Debug.LogWarning($"[WindowsBleNativePlugin] Device updated but not in discovered list: {dto.uuid}");
+                    return;
+                }
+                // JsonUtility maps an absent/empty "name" to string.Empty, not
+                // null, so a null-coalescing guard would let a frame without a
+                // LocalName erase the one we already have.
+                if (!string.IsNullOrEmpty(dto.name))
+                {
+                    device.Name = dto.name;
+                }
+                device.Rssi = dto.rssi;
+                device.ManufacturerData = dto.manufacturerData ?? string.Empty;
+                BleScanEventDelegates.InvokePeripheralUpdated(device);
             });
         }
 
@@ -360,6 +396,7 @@ namespace UnityBLE
 
             // Register callbacks first (using the rooted delegate instances).
             UnityBLE_registerOnPeripheralDiscovered(_cbPeripheralFound);
+            UnityBLE_registerOnPeripheralUpdated(_cbPeripheralUpdated);
             UnityBLE_registerOnPeripheralConnected(_cbConnected);
             UnityBLE_registerOnPeripheralDisconnected(_cbDisconnected);
             UnityBLE_registerOnBleErrorDetected(_cbError);
@@ -392,6 +429,10 @@ namespace UnityBLE
 
             string serviceUuidsCsv = string.Empty;
             string nameFilter = null;
+            // Default to Active scanning when no filter is supplied, matching
+            // ScanFilter's own default: MSD carried in SCAN_RSP is otherwise
+            // unreachable.
+            bool receiveScanResponse = true;
 
             if (filter != null)
             {
@@ -403,9 +444,11 @@ namespace UnityBLE
                 {
                     nameFilter = filter.Name;
                 }
+                receiveScanResponse = filter.ReceiveScanResponse;
             }
 
-            int scanResult = UnityBLE_StartScanning(serviceUuidsCsv, nameFilter);
+            int scanResult = UnityBLE_StartScanning(serviceUuidsCsv, nameFilter,
+                                                    receiveScanResponse ? 1 : 0);
 
             if (scanResult == 1)
             {

@@ -16,6 +16,7 @@ namespace UnityBLE.windows
             IsConnectable = true;
             TxPower = 0;
             AdvertisingData = string.Empty;
+            ManufacturerData = dto.manufacturerData ?? string.Empty;
 
             _services = new();
         }

@@ -1,0 +1,75 @@
+name: Build Windows DLL
+
+# Builds the C++/WinRT native plugin that backs Runtime/internal/Windows.
+# A Windows 10/11 SDK is mandatory (it provides the C++/WinRT projection headers
+# and WindowsApp.lib), so this can only run on a Windows runner - the DLL cannot
+# be cross-compiled from macOS or Linux.
+#
+# The artifact is downloaded and committed to
+# Runtime/Plugins/Windows/x86_64/UnityBleWindows.dll by hand; this workflow does
+# not push, so a build failure can never land a broken binary.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'externalProjects~/Windows/UnityBleWindows/**'
+      - '.github/workflows/build-windows-dll.yml'
+  pull_request:
+    paths:
+      - 'externalProjects~/Windows/UnityBleWindows/**'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: cmd
+        working-directory: externalProjects~/Windows/UnityBleWindows
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Puts the MSVC toolchain and the Windows SDK (INCLUDE / LIB) on the
+      # environment for every later step, which is what build.bat's vcvars64
+      # call does locally.
+      - name: Set up MSVC (x64)
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build UnityBleWindows.dll
+        run: |
+          if not exist build mkdir build
+          cl /nologo /std:c++20 /EHsc /MD /LD /O2 ^
+            /DWIN32_LEAN_AND_MEAN /DNOMINMAX /DUNICODE /D_UNICODE ^
+            src\UnityBleWindows.cpp ^
+            /Fo"build\\" ^
+            /Fe"build\UnityBleWindows.dll" ^
+            /link WindowsApp.lib
+
+      # The managed side P/Invokes these by name; a missing export surfaces as a
+      # runtime EntryPointNotFoundException that kills callback registration, so
+      # fail here instead.
+      - name: Verify exports
+        run: |
+          dumpbin /exports build\UnityBleWindows.dll > build\exports.txt
+          type build\exports.txt
+          for %%E in (
+            UnityBLEWin_StartScanning
+            UnityBLEWin_StopScanning
+            UnityBLEWin_registerOnPeripheralDiscovered
+            UnityBLEWin_registerOnPeripheralUpdated
+            UnityBLEWin_registerOnPeripheralConnected
+            UnityBLEWin_registerOnPeripheralDisconnected
+            UnityBLEWin_registerOnValueReceived
+          ) do (
+            findstr /C:"%%E" build\exports.txt >nul || (echo Missing export: %%E & exit /b 1)
+          )
+          echo All required exports present.
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: UnityBleWindows-dll
+          path: externalProjects~/Windows/UnityBleWindows/build/UnityBleWindows.dll
+          if-no-files-found: error

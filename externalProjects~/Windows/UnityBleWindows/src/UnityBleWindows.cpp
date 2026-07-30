@@ -20,7 +20,9 @@
 #include <winrt/Windows.Security.Cryptography.h>
 
 #include <atomic>
+#include <chrono>
 #include <cctype>
+#include <condition_variable>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -74,6 +76,7 @@ enum class BleState : int {
 
 // Registered callbacks.
 PeripheralFoundCb       g_onPeripheralFound = nullptr;
+PeripheralFoundCb       g_onPeripheralUpdated = nullptr;
 ConnectedCb             g_onConnected = nullptr;
 DisconnectedCb          g_onDisconnected = nullptr;
 BleErrorCb              g_onError = nullptr;
@@ -89,12 +92,36 @@ ValueReceivedCb         g_onValueReceived = nullptr;
 std::once_flag g_initOnce;
 
 // Scan state.
+//
+// A BLE device advertises over more than one frame: ADV_IND carries the flags
+// and service UUIDs, and the SCAN_RSP - delivered as a SEPARATE Received event
+// in Active scanning mode - typically carries the LocalName and the
+// Manufacturer Specific Data. Windows hands those frames to us unmerged (unlike
+// Android's ScanRecord, which is already a merged view), so we keep a merged
+// per-device view ourselves and report changes to it.
+struct AdvState {
+    bool matched = false;              // passed the scan filters at least once
+    std::string name;                  // last non-empty LocalName seen
+    std::string msd;                   // last Base64 Manufacturer Specific Data
+    // Advertisement type of the frame that supplied `msd`, or -1 when none.
+    // Tracked so a frame type that merely never carries MSD (e.g. ADV_IND when
+    // the payload lives in SCAN_RSP) is not mistaken for the MSD going away.
+    int msdSourceType = -1;
+    BluetoothAddressType addressType = BluetoothAddressType::Public;
+};
+
 BluetoothLEAdvertisementWatcher g_watcher{ nullptr };
 bool g_scanning = false;
-std::set<uint64_t> g_seen;
+std::map<uint64_t, AdvState> g_adv;
 std::set<std::string> g_serviceFilter; // lower-case service UUIDs
 std::string g_nameFilter;
 std::mutex g_scanMutex;
+
+// Signaled by the watcher's Stopped event so StopScanning can return only once
+// the controller has actually torn the scan down. Starting GATT while the
+// watcher is still stopping makes the first service query return Unreachable.
+std::condition_variable g_watcherStoppedCv;
+bool g_watcherStopped = true;
 
 // Connected device tracking.
 struct DeviceContext {
@@ -192,6 +219,22 @@ std::string Base64(IBuffer const& buffer) {
     return Utf8(CryptographicBuffer::EncodeToBase64String(buffer));
 }
 
+std::string ManufacturerDataBase64(BluetoothLEAdvertisement const& advertisement) {
+    auto entries = advertisement.ManufacturerData();
+    if (entries.Size() == 0) return {};
+
+    DataWriter writer;
+    for (auto const& entry : entries) {
+        // WinRT exposes CompanyId separately, while CoreBluetooth includes it
+        // in the manufacturer bytes. Rebuild the common DTO representation.
+        uint16_t companyId = entry.CompanyId();
+        writer.WriteByte(static_cast<uint8_t>(companyId & 0xFF));
+        writer.WriteByte(static_cast<uint8_t>((companyId >> 8) & 0xFF));
+        writer.WriteBuffer(entry.Data());
+    }
+    return Base64(writer.DetachBuffer());
+}
+
 // Map RadioState to our BleState. Falls back to a BluetoothAdapter check when
 // no Bluetooth radio is present.
 BleState QueryState() {
@@ -218,11 +261,13 @@ BleState QueryState() {
     }
 }
 
-std::string MakePeripheralJson(uint64_t addr, const std::string& name, int rssi) {
+std::string MakePeripheralJson(uint64_t addr, const std::string& name, int rssi,
+                               const std::string& manufacturerData = {}) {
     std::ostringstream os;
     os << "{\"uuid\":\"" << AddressToString(addr) << "\","
        << "\"name\":\"" << JsonEscape(name) << "\","
-       << "\"rssi\":" << rssi << "}";
+       << "\"rssi\":" << rssi << ","
+       << "\"manufacturerData\":\"" << JsonEscape(manufacturerData) << "\"}";
     return os.str();
 }
 
@@ -288,8 +333,8 @@ bool IsActiveContext(uint64_t addr, std::shared_ptr<DeviceContext> const& ctx) {
 
 // Route an incoming characteristic value. If the app has subscribed, forward it
 // immediately; otherwise buffer it so it can be flushed once the app subscribes.
-// This is what lets us capture the GranBoard version message, which is sent
-// right after connection (before the app gets a chance to subscribe).
+// This is what captures a notification the peripheral sends right after
+// connecting, before the app gets a chance to subscribe.
 void HandleIncomingValue(uint64_t addr, const std::string& charUuid, const std::string& b64) {
     std::shared_ptr<DeviceContext> ctx;
     {
@@ -345,9 +390,20 @@ IAsyncAction EnableNotifications(std::shared_ptr<DeviceContext> ctx, GattCharact
 // ---------------------------------------------------------------------------
 fire_and_forget ConnectAsync(uint64_t addr) {
     try {
-        auto device = co_await BluetoothLEDevice::FromBluetoothAddressAsync(addr);
+        // FromBluetoothAddressAsync's single-argument overload assumes a PUBLIC
+        // address, so a peripheral advertising with a random (static or
+        // resolvable) address would never be reachable. Use the type observed
+        // while scanning; fall back to Public for a device we never saw.
+        BluetoothAddressType addressType = BluetoothAddressType::Public;
+        {
+            std::lock_guard<std::mutex> lock(g_scanMutex);
+            auto it = g_adv.find(addr);
+            if (it != g_adv.end()) addressType = it->second.addressType;
+        }
+        auto device = co_await BluetoothLEDevice::FromBluetoothAddressAsync(addr, addressType);
         if (!device) {
             LogError("Failed to obtain BluetoothLEDevice for " + AddressToString(addr));
+            if (g_onDisconnected) g_onDisconnected(AddressToString(addr).c_str());
             co_return;
         }
 
@@ -383,89 +439,118 @@ fire_and_forget ConnectAsync(uint64_t addr) {
             g_devices[addr] = ctx;
         }
 
-        // Accessing GATT services forces the connection to be established.
-        auto result = co_await device.GetGattServicesAsync(BluetoothCacheMode::Uncached);
-        if (!IsActiveContext(addr, ctx)) {
-            Log("ConnectAsync canceled before GATT services completed for " + AddressToString(addr));
-            co_return;
+        // Ask Windows to establish and retain the link before the first GATT
+        // operation. Calling GetGattServicesAsync(Uncached) immediately after
+        // FromBluetoothAddressAsync is racy and frequently returns Unreachable
+        // while the controller is still creating the connection.
+        try {
+            auto session = co_await GattSession::FromDeviceIdAsync(device.BluetoothDeviceId());
+            if (!IsActiveContext(addr, ctx)) co_return;
+            if (session) {
+                session.MaintainConnection(true);
+                ctx->session = session;
+            }
+        } catch (winrt::hresult_error const& e) {
+            LogError("Pre-connect GattSession setup failed: " + Utf8(e.message()));
         }
 
-        if (result.Status() == GattCommunicationStatus::Success &&
-            device.ConnectionStatus() == BluetoothConnectionStatus::Connected) {
+        GattDeviceServicesResult result{ nullptr };
+        constexpr int maxAttempts = 5;
+        for (int attempt = 1; attempt <= maxAttempts; ++attempt) {
+            result = co_await device.GetGattServicesAsync(
+                BluetoothCacheMode::Uncached);
+            if (!IsActiveContext(addr, ctx)) {
+                Log("ConnectAsync canceled before GATT services completed for " + AddressToString(addr));
+                co_return;
+            }
+            if (result.Status() == GattCommunicationStatus::Success) break;
+            Log("GATT services attempt " + std::to_string(attempt) + "/" +
+                std::to_string(maxAttempts) + " failed status=" +
+                std::to_string(static_cast<int>(result.Status())) +
+                " addr=" + AddressToString(addr));
+            if (attempt < maxAttempts) {
+                // Windows can need several seconds after advertisement scanning
+                // stops before the controller has established the ACL/GATT link.
+                co_await winrt::resume_after(std::chrono::milliseconds(1500));
+            }
+        }
+
+        if (result && result.Status() == GattCommunicationStatus::Success) {
             ctx->connected = true;
-
-            // Now that the connection is established, hold a GattSession with
-            // MaintainConnection so Windows keeps the BLE link up (otherwise it
-            // tears the connection down shortly after GATT activity settles,
-            // e.g. right after the first notification). Done after connecting so
-            // it cannot interfere with establishing the connection itself.
-            try {
-                auto session = co_await GattSession::FromDeviceIdAsync(device.BluetoothDeviceId());
-                if (!IsActiveContext(addr, ctx)) {
-                    Log("ConnectAsync canceled before GattSession completed for " + AddressToString(addr));
-                    co_return;
-                }
-                if (session) {
-                    session.MaintainConnection(true);
-                    ctx->session = session;
-                }
-            } catch (winrt::hresult_error const& e) {
-                LogError("GattSession setup failed: " + Utf8(e.message()));
-            }
-
-            // Enumerate characteristics and pre-enable notifications NOW (before
-            // signaling connected / discovery). The GranBoard sends its version
-            // message right after connection; enabling notifications early and
-            // buffering values ensures it is not missed before the app subscribes.
-            for (auto const& service : result.Services()) {
-                try {
-                    auto chResult = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Uncached);
-                    if (!IsActiveContext(addr, ctx)) {
-                        Log("ConnectAsync canceled during characteristic discovery for " + AddressToString(addr));
-                        co_return;
-                    }
-                    if (chResult.Status() == GattCommunicationStatus::Success) {
-                        for (auto const& ch : chResult.Characteristics()) {
-                            std::string charUuid = ToLower(GuidToString(ch.Uuid()));
-                            {
-                                std::lock_guard<std::mutex> lock(g_devMutex);
-                                ctx->characteristics.insert_or_assign(charUuid, ch);
-                            }
-                            auto props = ch.CharacteristicProperties();
-                            bool notifiable =
-                                ((props & GattCharacteristicProperties::Notify) != GattCharacteristicProperties::None) ||
-                                ((props & GattCharacteristicProperties::Indicate) != GattCharacteristicProperties::None);
-                            if (notifiable) {
-                                co_await EnableNotifications(ctx, ch, charUuid, addr);
-                                if (!IsActiveContext(addr, ctx)) {
-                                    Log("ConnectAsync canceled while enabling notifications for " + AddressToString(addr));
-                                    co_return;
-                                }
-                            }
-                        }
-                    }
-                } catch (...) {
-                    LogError("Pre-enable characteristics failed for a service");
-                }
-            }
 
             if (!IsActiveContext(addr, ctx)) {
                 Log("ConnectAsync canceled before connected callback for " + AddressToString(addr));
                 co_return;
             }
 
+            // Report the established link immediately. A full uncached
+            // characteristic enumeration before this point delayed the callback
+            // beyond the managed connect timeout, so it now runs afterwards.
             std::string name = Utf8(device.Name());
             if (g_onConnected) g_onConnected(MakePeripheralJson(addr, name, 0).c_str());
+
+            // With the caller unblocked, enable notifications on every notifiable
+            // characteristic. A peripheral may send its first notification (e.g. a
+            // firmware/version message) immediately after connecting, before the
+            // app has had a chance to subscribe; enabling early lets
+            // HandleIncomingValue buffer those values into pendingValues so
+            // SubscribeAsync can flush them. Without this the buffer never fills
+            // and such a value is lost.
+            //
+            // This races the managed connected handler's DiscoverServices. Both
+            // paths insert into ctx->characteristics with emplace and then use
+            // whichever instance won, so the ValueChanged registration always sits
+            // on the instance the map holds. EnableNotifications is idempotent.
+            for (auto const& service : result.Services()) {
+                try {
+                    auto chResult = co_await service.GetCharacteristicsAsync(BluetoothCacheMode::Uncached);
+                    if (!IsActiveContext(addr, ctx)) {
+                        Log("ConnectAsync canceled during characteristic pre-enable for " + AddressToString(addr));
+                        co_return;
+                    }
+                    if (chResult.Status() != GattCommunicationStatus::Success) continue;
+
+                    for (auto const& ch : chResult.Characteristics()) {
+                        auto props = ch.CharacteristicProperties();
+                        bool notifiable =
+                            ((props & GattCharacteristicProperties::Notify) != GattCharacteristicProperties::None) ||
+                            ((props & GattCharacteristicProperties::Indicate) != GattCharacteristicProperties::None);
+                        if (!notifiable) continue;
+
+                        std::string charUuid = ToLower(GuidToString(ch.Uuid()));
+                        GattCharacteristic stored{ nullptr };
+                        {
+                            std::lock_guard<std::mutex> lock(g_devMutex);
+                            stored = ctx->characteristics.emplace(charUuid, ch).first->second;
+                        }
+                        co_await EnableNotifications(ctx, stored, charUuid, addr);
+                        if (!IsActiveContext(addr, ctx)) {
+                            Log("ConnectAsync canceled while enabling notifications for " + AddressToString(addr));
+                            co_return;
+                        }
+                    }
+                } catch (...) {
+                    LogError("Pre-enable characteristics failed for a service");
+                }
+            }
         } else {
-            LogError("Connection to " + AddressToString(addr) + " did not establish. GATT status=" + std::to_string(static_cast<int>(result.Status())));
+            int status = result
+                ? static_cast<int>(result.Status())
+                : static_cast<int>(GattCommunicationStatus::Unreachable);
+            LogError("Connection to " + AddressToString(addr) +
+                     " did not establish after retries. GATT status=" +
+                     std::to_string(status));
             RemoveDevice(addr);
+            if (g_onDisconnected) g_onDisconnected(AddressToString(addr).c_str());
         }
     } catch (winrt::hresult_error const& e) {
         LogError("ConnectAsync error: " + Utf8(e.message()));
         RemoveDevice(addr);
+        if (g_onDisconnected) g_onDisconnected(AddressToString(addr).c_str());
     } catch (...) {
         LogError("ConnectAsync unknown error");
         RemoveDevice(addr);
+        if (g_onDisconnected) g_onDisconnected(AddressToString(addr).c_str());
     }
 }
 
@@ -627,8 +712,8 @@ fire_and_forget SubscribeAsync(std::string peripheralUuid, std::string charUuidL
             co_await EnableNotifications(ctx, ch, charUuidLower, ctx->address);
         }
 
-        // Flush any values buffered before the app subscribed (e.g. the version
-        // message sent right after connection).
+        // Flush any values buffered before the app subscribed (e.g. a
+        // notification the peripheral sent right after connecting).
         std::vector<std::string> buffered;
         {
             std::lock_guard<std::mutex> lock(g_devMutex);
@@ -683,32 +768,92 @@ void OnAdvertisementReceived(BluetoothLEAdvertisementWatcher const&,
                              BluetoothLEAdvertisementReceivedEventArgs const& args) {
     uint64_t addr = args.BluetoothAddress();
     std::string name = Utf8(args.Advertisement().LocalName());
+    std::string manufacturerData = ManufacturerDataBase64(args.Advertisement());
 
-    // Name filter (exact match when provided).
+    const int advType = static_cast<int>(args.AdvertisementType());
+
+    bool discovered = false;
+    bool updated = false;
+    std::string mergedName;
+    std::string mergedMsd;
     {
         std::lock_guard<std::mutex> lock(g_scanMutex);
-        if (!g_nameFilter.empty() && name != g_nameFilter) {
-            return;
+        AdvState& state = g_adv[addr];
+
+        try {
+            state.addressType = args.BluetoothAddressType();
+        } catch (...) {
+            state.addressType = BluetoothAddressType::Public;
+            Log("BluetoothAddressType unavailable for " + AddressToString(addr) + "; using Public");
         }
-        if (!g_serviceFilter.empty()) {
-            bool match = false;
-            for (auto const& uuid : args.Advertisement().ServiceUuids()) {
-                if (g_serviceFilter.count(ToLower(GuidToString(uuid))) > 0) {
-                    match = true;
-                    break;
-                }
+
+        // Merge this frame into the per-device view BEFORE the filters, so a
+        // frame that fails them still contributes what it carries. Either half of
+        // the pair may hold the name or the MSD, and which one does is up to the
+        // peripheral.
+        if (!name.empty() && state.name != name) {
+            state.name = name;
+            updated = true;
+        }
+        if (!manufacturerData.empty()) {
+            if (state.msd != manufacturerData || state.msdSourceType != advType) {
+                state.msd = manufacturerData;
+                state.msdSourceType = advType;
+                updated = true;
             }
-            if (!match) return;
+        } else if (state.msdSourceType == advType) {
+            // The frame type that used to carry the MSD no longer does, so the
+            // peripheral really has stopped advertising it. A frame of a type
+            // that never carried MSD tells us nothing and is ignored - treating
+            // it as a removal would make the value flap on every ADV/SCAN_RSP
+            // pair.
+            state.msd.clear();
+            state.msdSourceType = -1;
+            updated = true;
         }
-        if (g_seen.count(addr) > 0) {
-            return; // emit each device only once per scan session
+
+        // Evaluate the filters on frames only until one matches. A SCAN_RSP
+        // repeats neither the service UUIDs nor (necessarily) the LocalName, so
+        // re-filtering it would discard exactly the frame that carries the MSD.
+        if (!state.matched) {
+            if (!g_nameFilter.empty() && state.name != g_nameFilter) return;
+
+            if (!g_serviceFilter.empty()) {
+                bool match = false;
+                for (auto const& uuid : args.Advertisement().ServiceUuids()) {
+                    if (g_serviceFilter.count(ToLower(GuidToString(uuid))) > 0) {
+                        match = true;
+                        break;
+                    }
+                }
+                if (!match) return;
+            }
+
+            state.matched = true;
+            discovered = true;
+            updated = false; // reported as a discovery, not an update
+            Log("Matched peripheral addr=" + AddressToString(addr) +
+                " advertisementType=" + std::to_string(advType) +
+                " services=" + std::to_string(args.Advertisement().ServiceUuids().Size()) +
+                " msd=" + (state.msd.empty() ? "<none>" : state.msd));
+        } else if (updated) {
+            Log("Advertisement updated addr=" + AddressToString(addr) +
+                " advertisementType=" + std::to_string(advType) +
+                " msd=" + (state.msd.empty() ? "<none>" : state.msd));
         }
-        g_seen.insert(addr);
+
+        mergedName = state.name;
+        mergedMsd = state.msd;
     }
 
+    if (!discovered && !updated) return;
+
     int rssi = args.RawSignalStrengthInDBm();
-    if (g_onPeripheralFound) {
-        g_onPeripheralFound(MakePeripheralJson(addr, name, rssi).c_str());
+    const std::string json = MakePeripheralJson(addr, mergedName, rssi, mergedMsd);
+    if (discovered) {
+        if (g_onPeripheralFound) g_onPeripheralFound(json.c_str());
+    } else if (g_onPeripheralUpdated) {
+        g_onPeripheralUpdated(json.c_str());
     }
 }
 
@@ -717,7 +862,12 @@ void OnAdvertisementReceived(BluetoothLEAdvertisementWatcher const&,
 // ---------------------------------------------------------------------------
 // Exported API.
 // ---------------------------------------------------------------------------
-UNITYBLE_API int UnityBLEWin_StartScanning(const char* serviceUuidsCsv, const char* nameFilter) {
+// receiveScanResponse maps ScanFilter.ReceiveScanResponse: non-zero requests
+// Active scanning, which makes the controller send SCAN_REQ and deliver the
+// SCAN_RSP as a second Received event. MSD that the peripheral places in
+// SCAN_RSP rather than ADV_IND is only reachable in Active mode.
+UNITYBLE_API int UnityBLEWin_StartScanning(const char* serviceUuidsCsv, const char* nameFilter,
+                                           int receiveScanResponse) {
     EnsureInit();
 
     BleState state = QueryState();
@@ -729,7 +879,7 @@ UNITYBLE_API int UnityBLEWin_StartScanning(const char* serviceUuidsCsv, const ch
         std::lock_guard<std::mutex> lock(g_scanMutex);
         if (g_scanning) return 1;
 
-        g_seen.clear();
+        g_adv.clear();
         g_serviceFilter.clear();
         g_nameFilter.clear();
 
@@ -747,22 +897,65 @@ UNITYBLE_API int UnityBLEWin_StartScanning(const char* serviceUuidsCsv, const ch
 
     try {
         g_watcher = BluetoothLEAdvertisementWatcher();
-        g_watcher.ScanningMode(BluetoothLEScanningMode::Active);
+        g_watcher.ScanningMode(receiveScanResponse ? BluetoothLEScanningMode::Active
+                                                   : BluetoothLEScanningMode::Passive);
         g_watcher.Received(OnAdvertisementReceived);
+        g_watcher.Stopped([](BluetoothLEAdvertisementWatcher const&,
+                             BluetoothLEAdvertisementWatcherStoppedEventArgs const& args) {
+            Log("Advertisement watcher stopped error=" +
+                std::to_string(static_cast<int>(args.Error())));
+            {
+                std::lock_guard<std::mutex> lock(g_scanMutex);
+                g_watcherStopped = true;
+            }
+            g_watcherStoppedCv.notify_all();
+        });
+        {
+            std::lock_guard<std::mutex> lock(g_scanMutex);
+            g_watcherStopped = false;
+        }
         g_watcher.Start();
+        Log("Advertisement watcher started serviceFilters=" +
+            std::to_string(g_serviceFilter.size()) +
+            " mode=" + (receiveScanResponse ? "Active" : "Passive"));
         std::lock_guard<std::mutex> lock(g_scanMutex);
         g_scanning = true;
     } catch (winrt::hresult_error const& e) {
         LogError("StartScanning failed: " + Utf8(e.message()));
+        std::lock_guard<std::mutex> lock(g_scanMutex);
+        g_watcherStopped = true;
         return -1;
     }
     return 0;
 }
 
+// Blocks until the watcher has actually stopped. BluetoothLEAdvertisementWatcher
+// ::Stop() only requests the teardown; starting GATT while the controller is
+// still scanning makes the first service query return Unreachable. The wait is
+// capped so a Stopped event that never arrives cannot wedge the caller.
 UNITYBLE_API void UnityBLEWin_StopScanning() {
+    constexpr auto kStopTimeout = std::chrono::seconds(2);
+
+    bool wasRunning = false;
+    {
+        std::lock_guard<std::mutex> lock(g_scanMutex);
+        wasRunning = !g_watcherStopped;
+    }
+
     try {
         if (g_watcher) g_watcher.Stop();
-    } catch (...) {}
+    } catch (...) {
+        std::lock_guard<std::mutex> lock(g_scanMutex);
+        g_watcherStopped = true;
+    }
+
+    if (wasRunning) {
+        std::unique_lock<std::mutex> lock(g_scanMutex);
+        if (!g_watcherStoppedCv.wait_for(lock, kStopTimeout, [] { return g_watcherStopped; })) {
+            Log("Advertisement watcher did not report Stopped within the timeout");
+        }
+    }
+
     std::lock_guard<std::mutex> lock(g_scanMutex);
     g_scanning = false;
 }
@@ -827,6 +1020,7 @@ UNITYBLE_API int UnityBLEWin_UnsubscribeFromCharacteristic(const char* periphera
 
 // --- Callback registration ---
 UNITYBLE_API void UnityBLEWin_registerOnPeripheralDiscovered(PeripheralFoundCb cb) { g_onPeripheralFound = cb; }
+UNITYBLE_API void UnityBLEWin_registerOnPeripheralUpdated(PeripheralFoundCb cb) { g_onPeripheralUpdated = cb; }
 UNITYBLE_API void UnityBLEWin_registerOnPeripheralConnected(ConnectedCb cb) { g_onConnected = cb; }
 UNITYBLE_API void UnityBLEWin_registerOnPeripheralDisconnected(DisconnectedCb cb) { g_onDisconnected = cb; }
 UNITYBLE_API void UnityBLEWin_registerOnBleErrorDetected(BleErrorCb cb) { g_onError = cb; }

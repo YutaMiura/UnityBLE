@@ -16,7 +16,7 @@ namespace UnityBLE.windows
             _targetDevice = targetDevice;
         }
 
-        public Task<IBlePeripheral> ExecuteAsync(CancellationToken cancellationToken)
+        public async Task<IBlePeripheral> ExecuteAsync(CancellationToken cancellationToken)
         {
             if (_targetDevice == null)
             {
@@ -31,16 +31,23 @@ namespace UnityBLE.windows
             try
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                WindowsBleNativePlugin.StopScan();
+
+                // Starting GATT while the advertisement watcher is still tearing
+                // down makes the first service query return Unreachable. The
+                // native StopScanning blocks until the watcher reports Stopped,
+                // so run it off the main thread rather than stalling a frame.
+                await Task.Run(WindowsBleNativePlugin.StopScan, cancellationToken);
+
                 Debug.Log($" Connecting to device {_targetDevice.UUID}...");
                 BleDeviceEvents.OnConnected += OnDeviceConnected;
+                BleDeviceEvents.OnDisconnected += OnDeviceDisconnected;
                 _cancellationRegistration = cancellationToken.Register(OnConnectionCancelled);
 
                 // Start native connection
                 WindowsBleNativePlugin.ConnectToDevice(_targetDevice.UUID);
 
                 // Wait for connection completion or cancellation
-                return _connectionCompletionSource.Task;
+                return await _connectionCompletionSource.Task;
             }
             catch (OperationCanceledException)
             {
@@ -67,6 +74,16 @@ namespace UnityBLE.windows
             Cleanup();
         }
 
+        private void OnDeviceDisconnected(string deviceUuid)
+        {
+            if (deviceUuid != _targetDevice.UUID) return;
+
+            Cleanup();
+            _connectionCompletionSource.TrySetException(
+                new InvalidOperationException(
+                    $"Windows could not establish a GATT connection to {_targetDevice.UUID}."));
+        }
+
         private void OnConnectionCancelled()
         {
             Debug.Log($" Connection to device {_targetDevice.UUID} was cancelled.");
@@ -87,6 +104,7 @@ namespace UnityBLE.windows
         private void Cleanup()
         {
             BleDeviceEvents.OnConnected -= OnDeviceConnected;
+            BleDeviceEvents.OnDisconnected -= OnDeviceDisconnected;
             _cancellationRegistration.Dispose();
         }
     }
