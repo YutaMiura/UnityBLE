@@ -27,7 +27,14 @@ namespace UnityBLE
         // connectGatt eventually fails with 133, but iOS/CoreBluetooth keeps a pending
         // connection alive indefinitely). The library therefore always bounds ConnectAsync so
         // a never-establishing link cannot hang the caller forever.
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+        // A single Windows GATT service request can take several seconds before
+        // returning Unreachable. The native Windows backend retries transient
+        // failures, so allow all attempts to complete.
+        private static readonly TimeSpan DefaultConnectTimeout = TimeSpan.FromSeconds(60);
+#else
         private static readonly TimeSpan DefaultConnectTimeout = TimeSpan.FromSeconds(15);
+#endif
 
         private bool _isConnected = false;
         internal ConcurrentDictionary<string, IBleService> _services = new();

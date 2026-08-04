@@ -68,14 +68,17 @@ namespace UnityBLE.windows
             _receiver.Start();
             _ctsRegistration = cancellationToken.Register(() =>
             {
-                StopScan();
+                _ = StopScan();
             });
             _scanCommand.Execute(filter);
             OnScanningStateChanged?.Invoke(true);
             return Task.CompletedTask;
         }
 
-        public Task<bool> StopScan()
+        // Awaits the native stop, which itself waits for the advertisement
+        // watcher to report Stopped. Running it off the main thread keeps that
+        // wait from stalling a frame.
+        public async Task<bool> StopScan()
         {
             if (!WindowsBleNativePlugin.IsScanning())
             {
@@ -87,9 +90,9 @@ namespace UnityBLE.windows
                 }
                 _ctsRegistration.Dispose();
                 OnScanningStateChanged?.Invoke(false);
-                return Task.FromResult(true);
+                return true;
             }
-            var result = _stopCommand.Execute();
+            var result = await _stopCommand.ExecuteAsync();
             if (result)
             {
                 if (_receiver != null)
@@ -100,7 +103,7 @@ namespace UnityBLE.windows
                 _ctsRegistration.Dispose();
                 OnScanningStateChanged?.Invoke(false);
             }
-            return Task.FromResult(result);
+            return result;
         }
 
         private class DeviceDiscoverReceiver
