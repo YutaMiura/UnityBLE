@@ -40,6 +40,17 @@ class PermissionService (private val activity: Activity){
      */
     fun ensurePermissionsWithResult(permissions: Array<String>, callback: (PermissionResult)->Unit){
         UnityLogger.d("Call ensurePermissionsWithResult with ${permissions.joinToString()}")
+
+        // Check permissions first. If all are already granted, proceed immediately without
+        // checking location service. This handles TV boxes (e.g. Android 9) where location
+        // service is disabled but ACCESS_COARSE_LOCATION is granted.
+        if(permissions.all { isGranted(it) }) {
+            callback(PermissionResult.ReadyForUse)
+            return
+        }
+
+        // Location service must be enabled before we can prompt the user for location
+        // permission on Android 11 (API 30) and below.
         if(Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) {
             if(!isLocationEnabled()) {
                 callback(PermissionResult.LocationServiceDisabled)
@@ -47,23 +58,18 @@ class PermissionService (private val activity: Activity){
             }
         }
 
-        if(permissions.all { isGranted(it) }) {
-            callback(PermissionResult.ReadyForUse)
-            return
-        } else {
-            val deniedPermissions = permissions.filter { !isGranted(it) }.toTypedArray()
-            PermissionResultDispatcher.set { granted ->
-                if (!granted) {
-                    callback(PermissionResult.SomePermissionsDined)
-                } else {
-                    callback(PermissionResult.ReadyForUse)
-                }
+        val deniedPermissions = permissions.filter { !isGranted(it) }.toTypedArray()
+        PermissionResultDispatcher.set { granted ->
+            if (!granted) {
+                callback(PermissionResult.SomePermissionsDined)
+            } else {
+                callback(PermissionResult.ReadyForUse)
             }
-
-            val intent = Intent(activity, PermissionRequester::class.java)
-                .putExtra(PermissionRequester.EXTRA_PERMISSION, deniedPermissions)
-            activity.startActivity(intent)
         }
+
+        val intent = Intent(activity, PermissionRequester::class.java)
+            .putExtra(PermissionRequester.EXTRA_PERMISSION, deniedPermissions)
+        activity.startActivity(intent)
     }
 
     fun requiredPermissionsForScan(): Array<String> {
