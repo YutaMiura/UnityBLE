@@ -1,8 +1,8 @@
 {
   "name": "com.yutamiura.unityble",
   "displayName": "Unity BLE",
-  "version": "0.3.1",
-  "unity": "2020.3",
+  "version": "0.3.2",
+  "unity": "6000.0",
   "description": "A Unity UPM package for BLE (Bluetooth Low Energy) connection support.",
   "author": {
     "name": "Yuta Miura",
