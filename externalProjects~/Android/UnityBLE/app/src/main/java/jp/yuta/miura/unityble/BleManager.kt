@@ -64,6 +64,12 @@ class BleManager private constructor(private val activity: Activity) {
         }
 
         val CCCD: UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+
+        // Reported as the descriptor-write status when the write could not even be
+        // issued, so a managed waiter fails immediately instead of sitting until its
+        // timeout waiting for an onDescriptorWrite callback that will never arrive.
+        // Not a BluetoothGatt status value — those are non-negative.
+        const val DESCRIPTOR_WRITE_NOT_ISSUED: Int = -1
     }
 
     init {
@@ -332,8 +338,26 @@ class BleManager private constructor(private val activity: Activity) {
                 PermissionService.PermissionResult.ReadyForUse -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         try {
-                            gatt.writeCharacteristic(char, value, writeType)
-                            unityEventDispatcher.notifyOnWrite(from = characteristicUUID, result = UnityBleEventDispatcher.WriteResult.OK)
+                            // The status code MUST be honoured. Reporting OK regardless
+                            // of it meant a write the stack refused — most often because
+                            // another GATT operation was still in flight — looked like a
+                            // successful send, and the command was silently lost.
+                            val code = gatt.writeCharacteristic(char, value, writeType)
+                            val result = when (code) {
+                                BluetoothStatusCodes.SUCCESS ->
+                                    UnityBleEventDispatcher.WriteResult.OK
+                                BluetoothStatusCodes.ERROR_GATT_WRITE_REQUEST_BUSY ->
+                                    UnityBleEventDispatcher.WriteResult.WRITE_REQUEST_BUSY
+                                BluetoothStatusCodes.ERROR_GATT_WRITE_NOT_ALLOWED ->
+                                    UnityBleEventDispatcher.WriteResult.OPERATION_NOT_SUPPORTED
+                                BluetoothStatusCodes.ERROR_MISSING_BLUETOOTH_CONNECT_PERMISSION ->
+                                    UnityBleEventDispatcher.WriteResult.PERMISSION_DENIED
+                                else -> UnityBleEventDispatcher.WriteResult.UNKNOWN
+                            }
+                            if (result != UnityBleEventDispatcher.WriteResult.OK) {
+                                UnityLogger.e("Write to $characteristicUUID rejected. code:$code result:$result")
+                            }
+                            unityEventDispatcher.notifyOnWrite(from = characteristicUUID, result = result)
                         } catch(e: IllegalArgumentException) {
                             UnityLogger.e("Write failed. characteristic may be null.")
                             unityEventDispatcher.notifyOnWrite(from = characteristicUUID, result = UnityBleEventDispatcher.WriteResult.UNKNOWN)
@@ -354,6 +378,20 @@ class BleManager private constructor(private val activity: Activity) {
         }
 
         return UnityBleEventDispatcher.WriteResult.OK.ordinal
+    }
+
+    /**
+     * Reports a CCCD write that could not be issued at all. Every early exit inside
+     * [subscribe] goes through this: a managed waiter is blocked on the descriptor
+     * write completing, and with no callback coming it would otherwise only learn of
+     * the failure by timing out.
+     */
+    private fun notifyDescriptorWriteNotIssued(characteristicUUID: String) {
+        unityEventDispatcher.notifyOnDescriptorWrite(
+            characteristicUUID,
+            CCCD.toString(),
+            DESCRIPTOR_WRITE_NOT_ISSUED
+        )
     }
 
     @SuppressLint("MissingPermission")
@@ -391,36 +429,25 @@ class BleManager private constructor(private val activity: Activity) {
                     val success = gatt.setCharacteristicNotification(char, true)
                     if(!success) {
                         unityEventDispatcher.notifyOnSubscribe(from = char, value = "", result = UnityBleEventDispatcher.SubscribeResult.UNKNOWN)
+                        notifyDescriptorWriteNotIssued(characteristicUUID)
                         UnityLogger.d("Start subscribe for $characteristicUUID failed.")
                     } else {
                         UnityLogger.d("Found descriptors ${char.descriptors.joinToString { it.uuid.toString()} } for $characteristicUUID")
                         val descriptor = char.getDescriptor(CCCD)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            when (gatt.writeDescriptor(descriptor, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)) {
-
-                                BluetoothStatusCodes.ERROR_GATT_WRITE_NOT_ALLOWED -> {
-                                    UnityLogger.d("Write ${BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE} to descriptor failed. cause NOT_ALLOWED")
-                                }
-
-                                BluetoothStatusCodes.ERROR_GATT_WRITE_REQUEST_BUSY -> {
-                                    UnityLogger.d("Write ${BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE} to descriptor failed. cause BUSY")
-                                }
-
-                                BluetoothStatusCodes.ERROR_MISSING_BLUETOOTH_CONNECT_PERMISSION -> {
-                                    UnityLogger.d("Write ${BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE} to descriptor failed. cause MISSING_PERMISSION")
-                                }
-
-                                BluetoothStatusCodes.ERROR_PROFILE_SERVICE_NOT_BOUND -> {
-                                    UnityLogger.d("Write ${BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE} to descriptor failed. cause SERVICE_NOT_BOUND")
-                                }
-
-                                BluetoothStatusCodes.ERROR_UNKNOWN -> {
-                                    UnityLogger.d("Write ${BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE} to descriptor failed. cause UNKNOWN")
-                                }
-
-                                BluetoothStatusCodes.SUCCESS -> {
-                                    UnityLogger.d("Write ${BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE} to descriptor succeed.")
-                                }
+                        if (descriptor == null) {
+                            // Notifiable but no CCCD: the write can never be issued, so
+                            // say so now rather than leaving a waiter hanging.
+                            UnityLogger.e("Characteristic $characteristicUUID has no CCCD descriptor; cannot enable notifications.")
+                            notifyDescriptorWriteNotIssued(characteristicUUID)
+                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            // Only reports whether the write was ACCEPTED; completion
+                            // arrives later via onDescriptorWrite.
+                            val code = gatt.writeDescriptor(descriptor, BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE)
+                            if (code == BluetoothStatusCodes.SUCCESS) {
+                                UnityLogger.d("Write ENABLE_NOTIFICATION to descriptor accepted; awaiting onDescriptorWrite.")
+                            } else {
+                                UnityLogger.e("Write ENABLE_NOTIFICATION to descriptor rejected. code:$code")
+                                notifyDescriptorWriteNotIssued(characteristicUUID)
                             }
                         } else {
                             if ((char.properties and BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0) {
@@ -429,19 +456,21 @@ class BleManager private constructor(private val activity: Activity) {
                                 descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
                             }
                             if(gatt.writeDescriptor(descriptor)) {
-                                UnityLogger.d("Write ${BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE} to descriptor succeed.")
+                                UnityLogger.d("Write ENABLE_NOTIFICATION to descriptor accepted; awaiting onDescriptorWrite.")
                             } else {
-                                UnityLogger.d("Write ${BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE} to descriptor failed.")
+                                UnityLogger.e("Write ENABLE_NOTIFICATION to descriptor rejected.")
+                                notifyDescriptorWriteNotIssued(characteristicUUID)
                             }
                         }
-                        UnityLogger.d("Start subscribe for $characteristicUUID succeed.")
                     }
                 }
                 PermissionService.PermissionResult.LocationServiceDisabled -> {
                     unityEventDispatcher.notifyOnSubscribe(from = char, value = "", result = UnityBleEventDispatcher.SubscribeResult.PERMISSION_DENIED)
+                    notifyDescriptorWriteNotIssued(characteristicUUID)
                 }
                 PermissionService.PermissionResult.SomePermissionsDined -> {
                     unityEventDispatcher.notifyOnSubscribe(from = char, value = "", result = UnityBleEventDispatcher.SubscribeResult.PERMISSION_DENIED)
+                    notifyDescriptorWriteNotIssued(characteristicUUID)
                 }
             }
         }
@@ -705,6 +734,14 @@ class BleManager private constructor(private val activity: Activity) {
             if(gatt == null) return
             if(descriptor == null) return
             UnityLogger.d("onDescriptorWrite to ${gatt.device.address} descriptor: ${descriptor.uuid} status:$status")
+            // This is what tells the managed side a subscription has actually taken
+            // effect. Without it, callers could only guess, and a command sent during
+            // the CCCD write is rejected as busy and silently never transmitted.
+            unityEventDispatcher.notifyOnDescriptorWrite(
+                descriptor.characteristic.uuid.toString(),
+                descriptor.uuid.toString(),
+                status
+            )
         }
 
         override fun onCharacteristicWrite(

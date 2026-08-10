@@ -1,5 +1,6 @@
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -25,6 +26,7 @@ namespace UnityBLE.Android
             eventReceiver.listener.OnReadResult += ReadResultCallback;
             eventReceiver.listener.OnWriteResult += WriteResultCallback;
             eventReceiver.listener.OnUnsubscribeResult += UnsubscribeResultCallback;
+            eventReceiver.listener.OnDescriptorWriteResult += DescriptorWriteResultCallback;
         }
 
         private TaskCompletionSource<int> startScanTask;
@@ -39,6 +41,14 @@ namespace UnityBLE.Android
         private readonly object readLock = new object();
         private readonly object writeLock = new object();
         private readonly object unsubscribeLock = new object();
+
+        // Pending SubscribeAsync calls, keyed by characteristic UUID. Keyed rather
+        // than single-slot like the read/write tasks above because two
+        // characteristics can be subscribed concurrently and each waits for its own
+        // CCCD write to complete.
+        private readonly object subscribeLock = new object();
+        private readonly Dictionary<string, TaskCompletionSource<int>> subscribeTasks =
+            new Dictionary<string, TaskCompletionSource<int>>(StringComparer.OrdinalIgnoreCase);
 
         public Task StartScanAsync(ScanFilter filter)
         {
@@ -308,6 +318,72 @@ namespace UnityBLE.Android
             }
         }
 
+        /// <summary>
+        /// Enables notifications and completes when the subscription has actually
+        /// taken effect on the device — i.e. when the CCCD descriptor write finishes.
+        ///
+        /// <para><see cref="Subscribe"/> only reports that the native layer ACCEPTED
+        /// the request. The descriptor write it starts is an asynchronous GATT
+        /// operation, and Android's stack runs one operation at a time: anything sent
+        /// during that window is rejected as busy and never reaches the device. A
+        /// caller that sends its first command right after Subscribe therefore loses
+        /// it, with no error on any layer. Awaiting this instead closes that window.</para>
+        /// </summary>
+        public Task SubscribeAsync(string characteristicUuid, string serviceUuid, string peripheralUuid)
+        {
+            TaskCompletionSource<int> task;
+            lock (subscribeLock)
+            {
+                if (subscribeTasks.TryGetValue(characteristicUuid, out var pending) && !pending.Task.IsCompleted)
+                {
+                    Debug.LogWarning($"SubscribeAsync called while a previous SubscribeAsync for {characteristicUuid} is still in progress.");
+                    return pending.Task;
+                }
+                task = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+                subscribeTasks[characteristicUuid] = task;
+            }
+
+            try
+            {
+                Subscribe(characteristicUuid, serviceUuid, peripheralUuid);
+            }
+            catch (Exception)
+            {
+                // The request was refused outright, so no descriptor-write callback is
+                // coming; drop the registration and let the caller see the throw.
+                lock (subscribeLock) { subscribeTasks.Remove(characteristicUuid); }
+                throw;
+            }
+
+            return task.Task;
+        }
+
+        private void DescriptorWriteResultCallback(string from, string descriptor, int status)
+        {
+            TaskCompletionSource<int> taskToComplete;
+            lock (subscribeLock)
+            {
+                // Also fires for the CCCD disable issued by unsubscribe, which nobody
+                // awaits — no pending entry simply means this one is not ours.
+                if (!subscribeTasks.TryGetValue(from, out taskToComplete) || taskToComplete.Task.IsCompleted)
+                {
+                    return;
+                }
+                subscribeTasks.Remove(from);
+            }
+
+            // Completed outside the lock to avoid running continuations under it.
+            if (status == 0)
+            {
+                taskToComplete.TrySetResult(status);
+            }
+            else
+            {
+                taskToComplete.TrySetException(new Exception(
+                    $"Failed to enable notifications on characteristic {from} (descriptor {descriptor}), status: {status}"));
+            }
+        }
+
         public Task UnsubscribeAsync(string characteristicUuid, string serviceUuid, string peripheralUuid)
         {
             if (string.IsNullOrEmpty(characteristicUuid) || string.IsNullOrEmpty(serviceUuid) || string.IsNullOrEmpty(peripheralUuid))
@@ -402,6 +478,7 @@ namespace UnityBLE.Android
                 eventReceiver.listener.OnReadResult -= ReadResultCallback;
                 eventReceiver.listener.OnWriteResult -= WriteResultCallback;
                 eventReceiver.listener.OnUnsubscribeResult -= UnsubscribeResultCallback;
+                eventReceiver.listener.OnDescriptorWriteResult -= DescriptorWriteResultCallback;
                 eventReceiver.Dispose();
                 eventReceiver = null;
             }

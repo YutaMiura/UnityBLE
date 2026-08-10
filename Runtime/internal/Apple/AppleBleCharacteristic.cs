@@ -91,6 +91,20 @@ namespace UnityBLE
             _subscribeCommand.Execute();
         }
 
+        /// <summary>
+        /// Completes as soon as the request is issued. Core Bluetooth queues GATT
+        /// operations per peripheral and runs them in order, so the setNotifyValue
+        /// started here is processed before any subsequent write — the busy-rejection
+        /// this method exists to prevent on Android cannot occur here. (Wiring
+        /// didUpdateNotificationStateFor through would be exact, but it would mean
+        /// rebuilding the iOS framework and macOS bundle for no behavioural change.)
+        /// </summary>
+        public Task SubscribeAsync(CancellationToken cancellationToken = default)
+        {
+            Subscribe();
+            return Task.CompletedTask;
+        }
+
         public Task UnsubscribeAsync()
         {
             if (!Properties.CanNotify())

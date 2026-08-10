@@ -85,6 +85,22 @@ namespace UnityBLE.Android
             _subscribeCommand.Execute();
         }
 
+        public Task SubscribeAsync(CancellationToken cancellationToken = default)
+        {
+            if (!Properties.CanNotify())
+            {
+                throw new InvalidOperationException($"Characteristic ({Uuid}) does not support notifications");
+            }
+
+            if (_subscribeCommand.IsSubscribed)
+            {
+                Debug.LogWarning($" Already subscribed to characteristic ({Uuid})");
+                return Task.CompletedTask;
+            }
+
+            return _subscribeCommand.ExecuteAsync(cancellationToken);
+        }
+
         public async Task UnsubscribeAsync()
         {
             if (!Properties.CanNotify())

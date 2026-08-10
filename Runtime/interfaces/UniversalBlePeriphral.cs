@@ -37,6 +37,14 @@ namespace UnityBLE
 #endif
 
         private bool _isConnected = false;
+
+        // True for the duration of ConnectAsync, including its retries. A disconnect
+        // that arrives while this is set is a FAILED ATTEMPT, not the loss of an
+        // established link, and must not tear this peripheral's subscriptions down —
+        // see OnDisconnected. Written and read from the connect flow and from native
+        // callbacks, hence volatile.
+        private volatile bool _connecting;
+
         internal ConcurrentDictionary<string, IBleService> _services = new();
 
         public event IBlePeripheral.ConnectionStatusChangedDelegate OnConnectionStatusChanged;
@@ -77,6 +85,7 @@ namespace UnityBLE
             using var timeoutCts = new CancellationTokenSource(timeout);
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
+            _connecting = true;
             try
             {
                 BleDeviceEvents.OnConnected += OnConnected;
@@ -110,6 +119,12 @@ namespace UnityBLE
                 Debug.LogError($"[UnityBLE] Connection failed for device {UUID}: {ex.Message}");
                 throw;
             }
+            finally
+            {
+                // From here a disconnect means an established link was lost, so
+                // OnDisconnected resumes its normal teardown.
+                _connecting = false;
+            }
 
             void Cleanup()
             {
@@ -132,6 +147,17 @@ namespace UnityBLE
             _isConnected = false;
             Debug.Log($"[UnityBLE] Device {UUID} connection state updated: {_isConnected}");
             OnConnectionStatusChanged?.Invoke(this, _isConnected);
+
+            // A disconnect during a connect is how the platform reports a failed ATTEMPT
+            // (Android surfaces GATT 133 as STATE_DISCONNECTED before the link is ever up).
+            // ExecuteConnectAsync owns that case and retries, and the next attempt still
+            // needs the handlers below — unsubscribing here left the successful retry with
+            // no OnConnected handler, so DiscoverServices never ran and the caller waited
+            // out its characteristic-discovery timeout on a connection that was actually up.
+            if (_connecting)
+            {
+                return;
+            }
 
             // Release everything tied to the dropped link. Without this, an unexpected disconnect
             // (e.g. a link-supervision timeout / status 8) leaves this peripheral subscribed to the
