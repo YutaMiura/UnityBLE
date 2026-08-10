@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -60,6 +61,80 @@ namespace UnityBLE.Android
                     Debug.LogError($"Error subscribing to characteristic {_characteristicUuid}: {ex.Message}");
                     throw;
                 }
+            }
+        }
+
+        /// <summary>
+        /// <see cref="Execute"/> that completes once the subscription is live on the
+        /// device rather than once the request has been accepted. Callers that send a
+        /// command straight after subscribing must use this: the CCCD write started by
+        /// the request keeps the GATT connection busy, and a command sent inside that
+        /// window is rejected and lost. Marks the command subscribed only on success.
+        /// </summary>
+        public async Task ExecuteAsync(CancellationToken cancellationToken = default)
+        {
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(SubscribeCommand));
+            }
+
+            lock (_lock)
+            {
+                if (_isSubscribed)
+                {
+                    Debug.LogWarning($"Already subscribed to characteristic {_characteristicUuid}");
+                    return;
+                }
+                BleDeviceEvents.OnDataReceived += OnCharacteristicValueReceived;
+            }
+
+            Debug.Log($"Subscribing to notifications for characteristic {_characteristicUuid}");
+            try
+            {
+                var subscribe = Plugin.SubscribeAsync(_characteristicUuid, _serviceUuid, _peripheralUuid);
+                // The native layer has no cancel for an in-flight descriptor write, so
+                // cancellation stops the wait, not the operation.
+                await WaitOrCancelAsync(subscribe, cancellationToken);
+                lock (_lock) { _isSubscribed = true; }
+            }
+            catch (Exception ex)
+            {
+                // Not subscribed after all — drop the listener so a retry does not
+                // register it twice and every notification arrives duplicated.
+                BleDeviceEvents.OnDataReceived -= OnCharacteristicValueReceived;
+                Debug.LogError($"Error subscribing to characteristic {_characteristicUuid}: {ex.Message}");
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Awaits <paramref name="task"/> but gives up when <paramref name="ct"/> is
+        /// cancelled. Hand-rolled because Task.WaitAsync does not exist on the
+        /// .NET Standard 2.1 profile Unity builds against.
+        /// </summary>
+        private static async Task WaitOrCancelAsync(Task task, CancellationToken ct)
+        {
+            if (!ct.CanBeCanceled)
+            {
+                await task;
+                return;
+            }
+
+            var cancelled = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            using (ct.Register(() => cancelled.TrySetCanceled(ct)))
+            {
+                var completed = await Task.WhenAny(task, cancelled.Task);
+                if (completed != task)
+                {
+                    // Abandoning the operation: observe its eventual failure so it does
+                    // not surface later as an unobserved task exception.
+                    _ = task.ContinueWith(
+                        t => { _ = t.Exception; },
+                        CancellationToken.None,
+                        TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+                        TaskScheduler.Default);
+                }
+                await completed;
             }
         }
 

@@ -116,6 +116,10 @@ namespace UnityBLE.Android
                 public delegate void UnsubscribeResultDelegate(string from, int status);
                 public event UnsubscribeResultDelegate OnUnsubscribeResult;
 
+                public delegate void DescriptorWriteResultDelegate(string from, string descriptor, int status);
+
+                public event DescriptorWriteResultDelegate OnDescriptorWriteResult;
+
                 internal void InvokeScanResult(int code)
                 {
                     OnScanResult?.Invoke(code);
@@ -149,6 +153,11 @@ namespace UnityBLE.Android
                 internal void InvokeUnsubscribed(string from, int status)
                 {
                     OnUnsubscribeResult?.Invoke(from, status);
+                }
+
+                internal void InvokeDescriptorWriteResult(string from, string descriptor, int status)
+                {
+                    OnDescriptorWriteResult?.Invoke(from, descriptor, status);
                 }
             }
 
@@ -272,6 +281,15 @@ namespace UnityBLE.Android
                 {
                     Debug.LogError($"Failed to subscribe to characteristic {dto.from}: status {dto.status}");
                 }
+            }
+
+            // Invoked by Kotlin's UnityBleEventDispatcher.notifyOnDescriptorWrite.
+            // Completes a pending SubscribeAsync: until the CCCD write finishes, the
+            // GATT connection is busy and any command sent is rejected and lost.
+            public void OnDescriptorWrite(string descriptorWriteResponseJson)
+            {
+                var dto = JsonUtility.FromJson<DescriptorWriteResponseDTO>(descriptorWriteResponseJson);
+                listener.InvokeDescriptorWriteResult(dto.from, dto.descriptor, dto.status);
             }
 
             public void OnUnsubscribed(string unsubscribeResponseJson)

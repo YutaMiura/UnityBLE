@@ -2,6 +2,38 @@
 
 All notable changes to this package will be documented in this file.
 
+## [0.3.3]
+### Added
+- `IBleCharacteristic.SubscribeAsync(CancellationToken)` — subscribes and completes once
+  notifications are actually live on the device, so the first command cannot race the
+  subscription. `Subscribe()` is unchanged and still returns at the request.
+- Android: `onDescriptorWrite` is now forwarded to managed code (`OnDescriptorWrite`), which
+  is what `SubscribeAsync` awaits. Every early exit in `subscribe()` reports a failed
+  descriptor write too, so a waiter fails immediately instead of timing out.
+
+### Fixed
+- A connect whose first `connectGatt` attempt failed (Android reports GATT 133 as
+  `STATE_DISCONNECTED`) came back "connected" with no services discovered. The peripheral's
+  own `OnDisconnected` treated the failed attempt as a lost link and unsubscribed itself, so
+  when `ConnectCommand` retried and succeeded, `OnConnected` — and the `DiscoverServices()`
+  it performs — never ran. Callers then waited out their characteristic-discovery timeout on
+  a link that was actually up. Disconnects arriving during a connect no longer tear the
+  subscriptions down; retries own that case.
+- Android: a characteristic write issued while another was still in flight was not sent at
+  all — `WriteAsync` returned the earlier write's task and dropped the new value — because
+  every characteristic shared one completion slot. The write completion was matched to that
+  slot rather than to the characteristic it named, so one characteristic's result could
+  finish another's write. Writes are now tracked per characteristic and overlapping writes
+  to the same one are sent in order. Each write is bounded by a 2s acknowledgement timeout
+  so a lost callback cannot stall the ones queued behind it.
+- Android: `BleManager.write()` no longer discards the status code returned by
+  `BluetoothGatt.writeCharacteristic` on API 33+. It reported every write as `OK`, so a write
+  the stack refused — most often `ERROR_GATT_WRITE_REQUEST_BUSY`, because enabling
+  notifications leaves a CCCD descriptor write in flight — looked like a successful send and
+  the command was silently lost. Callers that wrote immediately after `Subscribe()` therefore
+  lost their first command with no error on any layer. `WriteResult.WRITE_REQUEST_BUSY` was
+  added for that case (appended last, so existing ordinals keep their meaning).
+
 ## [0.3.2]
 ### Fixed
 - Android: `ensurePermissionsWithResult` now returns `ReadyForUse` immediately when every

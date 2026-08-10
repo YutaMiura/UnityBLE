@@ -10,6 +10,7 @@ import android.os.Handler
 import android.os.Looper
 import jp.yuta.miura.unityble.dto.BleDeviceDTO
 import jp.yuta.miura.unityble.dto.BleServiceDTO
+import jp.yuta.miura.unityble.dto.DescriptorWriteResponse
 import jp.yuta.miura.unityble.dto.SubscribeResponse
 import jp.yuta.miura.unityble.dto.ReadResponse
 import jp.yuta.miura.unityble.dto.WriteResponse
@@ -33,6 +34,7 @@ class UnityBleEventDispatcher {
         private const val METHOD_NAME_ON_WRITE = "OnWriteCharacteristic"
         private const val METHOD_NAME_ON_SUBSCRIBED = "OnSubscribed"
         private const val METHOD_NAME_ON_UNSUBSCRIBED = "OnUnsubscribed"
+        private const val METHOD_NAME_ON_DESCRIPTOR_WRITE = "OnDescriptorWrite"
         private const val METHOD_NAME_ON_CLEAR_FOUND_DEVICES = "OnClearFoundDevices"
     }
 
@@ -54,7 +56,12 @@ class UnityBleEventDispatcher {
     }
 
     enum class WriteResult {
-        OK, DEVICE_NOT_FOUND, OPERATION_NOT_SUPPORTED, PERMISSION_DENIED, UNKNOWN
+        OK, DEVICE_NOT_FOUND, OPERATION_NOT_SUPPORTED, PERMISSION_DENIED, UNKNOWN,
+        // The GATT stack refused the write because another operation was still in
+        // flight on this connection (BluetoothStatusCodes.ERROR_GATT_WRITE_REQUEST_BUSY).
+        // Appended last so the existing ordinals — which cross the JNI boundary as
+        // ints — keep their meaning.
+        WRITE_REQUEST_BUSY
     }
 
     enum class SubscribeResult {
@@ -188,6 +195,23 @@ class UnityBleEventDispatcher {
         val str = Json.encodeToString(serializer<SubscribeResponse>(), dto)
         handler.post{
             UnityFacade.sendToUnity(GAME_OBJ_NAME, METHOD_NAME_ON_SUBSCRIBED, str)
+        }
+    }
+
+    /**
+     * Reports that a descriptor write finished. The managed side uses the CCCD
+     * write to know when a subscription has actually taken effect — until then
+     * the connection is busy and any command issued is rejected and lost.
+     *
+     * [status] is the raw BluetoothGatt status (0 = GATT_SUCCESS); a synchronous
+     * failure to even issue the write is reported here too, so a waiter fails
+     * fast instead of sitting until its timeout.
+     */
+    fun notifyOnDescriptorWrite(characteristicUuid: String, descriptorUuid: String, status: Int) {
+        val dto = DescriptorWriteResponse(from = characteristicUuid, descriptor = descriptorUuid, status = status)
+        val str = Json.encodeToString(serializer<DescriptorWriteResponse>(), dto)
+        handler.post {
+            UnityFacade.sendToUnity(GAME_OBJ_NAME, METHOD_NAME_ON_DESCRIPTOR_WRITE, str)
         }
     }
 

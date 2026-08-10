@@ -92,6 +92,18 @@ namespace UnityBLE
             _subscribeCommand.Execute();
         }
 
+        /// <summary>
+        /// Completes as soon as the request is issued. WinRT serialises GATT
+        /// operations on a device, so the CCCD write started here is processed before
+        /// any subsequent write — the busy-rejection this method exists to prevent on
+        /// Android cannot occur here.
+        /// </summary>
+        public Task SubscribeAsync(CancellationToken cancellationToken = default)
+        {
+            Subscribe();
+            return Task.CompletedTask;
+        }
+
         public Task UnsubscribeAsync()
         {
             if (!Properties.CanNotify())

@@ -1,5 +1,6 @@
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -25,20 +26,47 @@ namespace UnityBLE.Android
             eventReceiver.listener.OnReadResult += ReadResultCallback;
             eventReceiver.listener.OnWriteResult += WriteResultCallback;
             eventReceiver.listener.OnUnsubscribeResult += UnsubscribeResultCallback;
+            eventReceiver.listener.OnDescriptorWriteResult += DescriptorWriteResultCallback;
         }
 
         private TaskCompletionSource<int> startScanTask;
         private TaskCompletionSource<int> stopScanTask;
         private TaskCompletionSource<string> readTask;
-        private TaskCompletionSource<int> writeTask;
         private TaskCompletionSource<int> unsubscribeTask;
         private const int StopScanTimeoutMillis = 2000;
+
+        // Bounds a single characteristic write. The native side answers as soon as it has
+        // handed the value to the GATT stack, so this only fires when that answer is lost
+        // — and it must, because writes to one characteristic are chained and a write that
+        // never completed would stall every later one behind it.
+        private const int WriteTimeoutMillis = 2000;
 
         private readonly object startScanLock = new object();
         private readonly object stopScanLock = new object();
         private readonly object readLock = new object();
+        // Writes are tracked per characteristic, not in one shared slot. With a single slot
+        // a write issued while another was still in flight was NOT SENT AT ALL — the call
+        // returned the earlier write's task and the new value was silently dropped — and
+        // the completion callback, which does carry the characteristic it belongs to, was
+        // applied to whatever happened to be pending.
+        //
+        // writeTasks holds the write currently awaiting its native completion; writeQueues
+        // holds the tail of each characteristic's chain so overlapping writes are sent one
+        // after another instead of racing or being lost.
         private readonly object writeLock = new object();
+        private readonly Dictionary<string, TaskCompletionSource<int>> writeTasks =
+            new Dictionary<string, TaskCompletionSource<int>>(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Task> writeQueues =
+            new Dictionary<string, Task>(StringComparer.OrdinalIgnoreCase);
         private readonly object unsubscribeLock = new object();
+
+        // Pending SubscribeAsync calls, keyed by characteristic UUID. Keyed rather
+        // than single-slot like the read/write tasks above because two
+        // characteristics can be subscribed concurrently and each waits for its own
+        // CCCD write to complete.
+        private readonly object subscribeLock = new object();
+        private readonly Dictionary<string, TaskCompletionSource<int>> subscribeTasks =
+            new Dictionary<string, TaskCompletionSource<int>>(StringComparer.OrdinalIgnoreCase);
 
         public Task StartScanAsync(ScanFilter filter)
         {
@@ -240,41 +268,94 @@ namespace UnityBLE.Android
             }
         }
 
+        /// <summary>
+        /// Writes to a characteristic, queueing behind any write to that same
+        /// characteristic that has not completed yet. Every call reaches the device: the
+        /// returned task completes when THIS value has been written.
+        /// </summary>
         public Task WriteAsync(IBleCharacteristic characteristic, byte[] data)
         {
             lock (writeLock)
             {
-                if (writeTask != null && !writeTask.Task.IsCompleted)
-                {
-                    Debug.LogWarning("WriteAsync called while a previous WriteAsync is still in progress.");
-                    return writeTask.Task;
-                }
-                writeTask = new TaskCompletionSource<int>();
+                writeQueues.TryGetValue(characteristic.Uuid, out var previous);
+                var queued = WriteAfterAsync(previous, characteristic, data);
+                writeQueues[characteristic.Uuid] = queued;
+                return queued;
+            }
+        }
+
+        private async Task WriteAfterAsync(Task previous, IBleCharacteristic characteristic, byte[] data)
+        {
+            // Yield before anything else. WriteAsync starts this method inside writeLock and
+            // an async method runs synchronously up to its first suspension — including a
+            // completed `await previous`. UnityBleMainThread.Run below BLOCKS when called
+            // off the main thread, so without this it would block while holding writeLock,
+            // and the main thread would deadlock against it the moment a write callback
+            // arrived and tried to take the same lock.
+            await Task.Yield();
+
+            if (previous != null)
+            {
+                // Outcome ignored on purpose: an earlier write's failure belongs to whoever
+                // issued it, and must not cancel this one.
+                try { await previous; } catch { /* observed by its own caller */ }
             }
 
-            var result = UnityBleMainThread.Run(() => BleManagerInstance.Call<int>(METHOD_NAME_WRITE, characteristic.Uuid, characteristic.serviceUUID, characteristic.peripheralUUID, data));
-            if (result != 0)
+            var uuid = characteristic.Uuid;
+            var task = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+            lock (writeLock)
             {
+                writeTasks[uuid] = task;
+            }
+
+            try
+            {
+                var result = UnityBleMainThread.Run(() => BleManagerInstance.Call<int>(
+                    METHOD_NAME_WRITE, uuid, characteristic.serviceUUID, characteristic.peripheralUUID, data));
+                if (result != 0)
+                {
+                    throw new Exception(
+                        $"Failed to write characteristic {uuid} of peripheral {characteristic.peripheralUUID}, error code: {result}");
+                }
+
+                var completed = await Task.WhenAny(task.Task, Task.Delay(WriteTimeoutMillis));
+                if (completed != task.Task)
+                {
+                    throw new TimeoutException(
+                        $"Write to characteristic {uuid} of peripheral {characteristic.peripheralUUID} was not acknowledged within {WriteTimeoutMillis}ms.");
+                }
+
+                await task.Task;
+            }
+            finally
+            {
+                // Drop the registration however this ended, so a late callback cannot
+                // complete a write that already gave up and the next write starts clean.
                 lock (writeLock)
                 {
-                    writeTask.TrySetException(new Exception($"Failed to write characteristic {characteristic.Uuid} of peripheral {characteristic.peripheralUUID}, error code: {result}"));
+                    if (writeTasks.TryGetValue(uuid, out var registered) && ReferenceEquals(registered, task))
+                    {
+                        writeTasks.Remove(uuid);
+                    }
                 }
             }
-            return writeTask.Task;
         }
 
         private void WriteResultCallback(string from, int status)
         {
-            TaskCompletionSource<int> taskToComplete = null;
+            TaskCompletionSource<int> taskToComplete;
 
             lock (writeLock)
             {
-                if (writeTask == null || writeTask.Task.IsCompleted)
+                // Matched on `from`: the callback names the characteristic it belongs to,
+                // and completing whatever was pending instead let one characteristic's
+                // result finish another's write.
+                if (!writeTasks.TryGetValue(from, out taskToComplete) || taskToComplete.Task.IsCompleted)
                 {
                     Debug.LogWarning($"WriteResultCallback called but no pending task (from: {from}, status: {status})");
                     return;
                 }
-                taskToComplete = writeTask;
+                writeTasks.Remove(from);
             }
 
             // Complete the task outside the lock to avoid potential deadlocks
@@ -305,6 +386,72 @@ namespace UnityBLE.Android
             else
             {
                 throw new Exception($"Failed to subscribe to characteristic {characteristicUuid} of peripheral {peripheralUuid}, error code: {result}");
+            }
+        }
+
+        /// <summary>
+        /// Enables notifications and completes when the subscription has actually
+        /// taken effect on the device — i.e. when the CCCD descriptor write finishes.
+        ///
+        /// <para><see cref="Subscribe"/> only reports that the native layer ACCEPTED
+        /// the request. The descriptor write it starts is an asynchronous GATT
+        /// operation, and Android's stack runs one operation at a time: anything sent
+        /// during that window is rejected as busy and never reaches the device. A
+        /// caller that sends its first command right after Subscribe therefore loses
+        /// it, with no error on any layer. Awaiting this instead closes that window.</para>
+        /// </summary>
+        public Task SubscribeAsync(string characteristicUuid, string serviceUuid, string peripheralUuid)
+        {
+            TaskCompletionSource<int> task;
+            lock (subscribeLock)
+            {
+                if (subscribeTasks.TryGetValue(characteristicUuid, out var pending) && !pending.Task.IsCompleted)
+                {
+                    Debug.LogWarning($"SubscribeAsync called while a previous SubscribeAsync for {characteristicUuid} is still in progress.");
+                    return pending.Task;
+                }
+                task = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+                subscribeTasks[characteristicUuid] = task;
+            }
+
+            try
+            {
+                Subscribe(characteristicUuid, serviceUuid, peripheralUuid);
+            }
+            catch (Exception)
+            {
+                // The request was refused outright, so no descriptor-write callback is
+                // coming; drop the registration and let the caller see the throw.
+                lock (subscribeLock) { subscribeTasks.Remove(characteristicUuid); }
+                throw;
+            }
+
+            return task.Task;
+        }
+
+        private void DescriptorWriteResultCallback(string from, string descriptor, int status)
+        {
+            TaskCompletionSource<int> taskToComplete;
+            lock (subscribeLock)
+            {
+                // Also fires for the CCCD disable issued by unsubscribe, which nobody
+                // awaits — no pending entry simply means this one is not ours.
+                if (!subscribeTasks.TryGetValue(from, out taskToComplete) || taskToComplete.Task.IsCompleted)
+                {
+                    return;
+                }
+                subscribeTasks.Remove(from);
+            }
+
+            // Completed outside the lock to avoid running continuations under it.
+            if (status == 0)
+            {
+                taskToComplete.TrySetResult(status);
+            }
+            else
+            {
+                taskToComplete.TrySetException(new Exception(
+                    $"Failed to enable notifications on characteristic {from} (descriptor {descriptor}), status: {status}"));
             }
         }
 
@@ -402,6 +549,7 @@ namespace UnityBLE.Android
                 eventReceiver.listener.OnReadResult -= ReadResultCallback;
                 eventReceiver.listener.OnWriteResult -= WriteResultCallback;
                 eventReceiver.listener.OnUnsubscribeResult -= UnsubscribeResultCallback;
+                eventReceiver.listener.OnDescriptorWriteResult -= DescriptorWriteResultCallback;
                 eventReceiver.Dispose();
                 eventReceiver = null;
             }

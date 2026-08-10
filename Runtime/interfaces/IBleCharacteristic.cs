@@ -48,8 +48,21 @@ namespace UnityBLE
         /// <summary>
         /// Subscribe to notifications for this characteristic.
         /// </summary>
-        /// <param name="cancellationToken">Token to cancel the subscription operation</param>
+        /// <remarks>
+        /// Returns as soon as the request has been ISSUED, not when notifications are
+        /// live. Enabling notifications is an asynchronous GATT operation, and on
+        /// Android the stack rejects anything sent while it is still in flight — so a
+        /// command written right after this call is silently dropped. Prefer
+        /// <see cref="SubscribeAsync"/> whenever a command follows the subscription.
+        /// </remarks>
         void Subscribe();
+
+        /// <summary>
+        /// Subscribe to notifications and complete once the subscription is actually
+        /// live on the device, so the next command cannot race it.
+        /// </summary>
+        /// <param name="cancellationToken">Token to stop waiting for the subscription</param>
+        Task SubscribeAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Unsubscribe from notifications for this characteristic.
