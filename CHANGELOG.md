@@ -19,6 +19,13 @@ All notable changes to this package will be documented in this file.
   it performs — never ran. Callers then waited out their characteristic-discovery timeout on
   a link that was actually up. Disconnects arriving during a connect no longer tear the
   subscriptions down; retries own that case.
+- Android: a characteristic write issued while another was still in flight was not sent at
+  all — `WriteAsync` returned the earlier write's task and dropped the new value — because
+  every characteristic shared one completion slot. The write completion was matched to that
+  slot rather than to the characteristic it named, so one characteristic's result could
+  finish another's write. Writes are now tracked per characteristic and overlapping writes
+  to the same one are sent in order. Each write is bounded by a 2s acknowledgement timeout
+  so a lost callback cannot stall the ones queued behind it.
 - Android: `BleManager.write()` no longer discards the status code returned by
   `BluetoothGatt.writeCharacteristic` on API 33+. It reported every write as `OK`, so a write
   the stack refused — most often `ERROR_GATT_WRITE_REQUEST_BUSY`, because enabling
