@@ -12,24 +12,27 @@ import jp.yuta.miura.unityble.unity.UnityLogger
 
 object PermissionResultDispatcher {
     @Volatile
-    private var listener: ((Boolean) -> Unit)? = null
+    private var listener: ((PermissionRequestResult) -> Unit)? = null
 
-    fun set(listener: (Boolean) -> Unit) {
+    fun set(listener: (PermissionRequestResult) -> Unit) {
         PermissionResultDispatcher.listener = listener
     }
 
     private fun clear() { listener = null }
 
-    fun dispatch(granted: Boolean) {
-        listener?.invoke(granted)
+    fun dispatch(result: PermissionRequestResult) {
+        listener?.invoke(result)
         clear()
     }
 }
 
+enum class PermissionRequestResult {
+    Granted, Denied, PermanentlyDenied,
+}
 
 class PermissionService (private val activity: Activity){
     enum class PermissionResult {
-        ReadyForUse, LocationServiceDisabled, SomePermissionsDined,
+        ReadyForUse, LocationServiceDisabled, SomePermissionsDined, PermanentlyDenied,
     }
     /**
      * Returns whether the required permissions for BLE usage are granted.
@@ -59,11 +62,11 @@ class PermissionService (private val activity: Activity){
         }
 
         val deniedPermissions = permissions.filter { !isGranted(it) }.toTypedArray()
-        PermissionResultDispatcher.set { granted ->
-            if (!granted) {
-                callback(PermissionResult.SomePermissionsDined)
-            } else {
-                callback(PermissionResult.ReadyForUse)
+        PermissionResultDispatcher.set { result ->
+            when (result) {
+                PermissionRequestResult.Granted -> callback(PermissionResult.ReadyForUse)
+                PermissionRequestResult.Denied -> callback(PermissionResult.SomePermissionsDined)
+                PermissionRequestResult.PermanentlyDenied -> callback(PermissionResult.PermanentlyDenied)
             }
         }
 

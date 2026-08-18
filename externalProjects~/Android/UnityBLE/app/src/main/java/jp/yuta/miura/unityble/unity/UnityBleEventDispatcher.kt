@@ -44,7 +44,9 @@ class UnityBleEventDispatcher {
         OK, DEVICE_NOT_FOUND, ALREADY_CONNECTED, PERMISSION_DENIED, UNKNOWN
     }
     enum class ScanResult {
-        OK, BLE_FEATURE_NOT_FOUND, LOCATION_SERVICE_DISABLED, PERMISSION_DENIED, UNKNOWN
+        OK, BLE_FEATURE_NOT_FOUND, LOCATION_SERVICE_DISABLED, PERMISSION_DENIED, UNKNOWN,
+        // Appended to preserve the JNI ordinals of all existing results.
+        PERMISSION_PERMANENTLY_DENIED
     }
 
     enum class DiscoverServiceResult {

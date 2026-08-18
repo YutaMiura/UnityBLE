@@ -4,15 +4,23 @@ import android.app.Activity
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.ActivityCompat
 import jp.yuta.miura.unityble.unity.UnityLogger
 
 class PermissionRequester : ComponentActivity() {
     private val requestLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) {results ->
-        val isGranted = results.values.all { it }
-        PermissionResultDispatcher.dispatch(isGranted)
-        if(isGranted) {
+        val deniedPermissions = results.filterValues { !it }.keys
+        val result = when {
+            deniedPermissions.isEmpty() -> PermissionRequestResult.Granted
+            deniedPermissions.any { permission ->
+                !ActivityCompat.shouldShowRequestPermissionRationale(this, permission)
+            } -> PermissionRequestResult.PermanentlyDenied
+            else -> PermissionRequestResult.Denied
+        }
+        PermissionResultDispatcher.dispatch(result)
+        if(result == PermissionRequestResult.Granted) {
             setResult(Activity.RESULT_OK, intent)
         } else {
             setResult(Activity.RESULT_CANCELED, intent)

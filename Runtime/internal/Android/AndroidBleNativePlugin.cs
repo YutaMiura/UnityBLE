@@ -120,6 +120,10 @@ namespace UnityBLE.Android
             {
                 taskToComplete.TrySetException(new BleUnAuthorized());
             }
+            else if (code == 5)
+            {
+                taskToComplete.TrySetException(new BlePermissionPermanentlyDenied());
+            }
             else
             {
                 taskToComplete.TrySetException(new Exception($"Unknown error code: {code}"));
@@ -196,6 +200,10 @@ namespace UnityBLE.Android
             else if (code == 3)
             {
                 taskToComplete.TrySetException(new BleUnAuthorized());
+            }
+            else if (code == 5)
+            {
+                taskToComplete.TrySetException(new BlePermissionPermanentlyDenied());
             }
             else
             {

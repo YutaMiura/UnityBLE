@@ -159,6 +159,9 @@ class BleManager private constructor(private val activity: Activity) {
                 PermissionService.PermissionResult.SomePermissionsDined -> {
                     unityEventDispatcher.notifyResultForInvokeScan(UnityBleEventDispatcher.ScanResult.PERMISSION_DENIED)
                 }
+                PermissionService.PermissionResult.PermanentlyDenied -> {
+                    unityEventDispatcher.notifyResultForInvokeScan(UnityBleEventDispatcher.ScanResult.PERMISSION_PERMANENTLY_DENIED)
+                }
             }
 
         }
@@ -184,6 +187,9 @@ class BleManager private constructor(private val activity: Activity) {
                 }
                 PermissionService.PermissionResult.SomePermissionsDined -> {
                     unityEventDispatcher.notifyResultForInvokeStopScan(UnityBleEventDispatcher.ScanResult.PERMISSION_DENIED)
+                }
+                PermissionService.PermissionResult.PermanentlyDenied -> {
+                    unityEventDispatcher.notifyResultForInvokeStopScan(UnityBleEventDispatcher.ScanResult.PERMISSION_PERMANENTLY_DENIED)
                 }
             }
         }
@@ -232,6 +238,9 @@ class BleManager private constructor(private val activity: Activity) {
                 PermissionService.PermissionResult.SomePermissionsDined -> {
                     unityEventDispatcher.notifyResultForInvokeConnect(UnityBleEventDispatcher.ConnectResult.PERMISSION_DENIED)
                 }
+                PermissionService.PermissionResult.PermanentlyDenied -> {
+                    unityEventDispatcher.notifyResultForInvokeConnect(UnityBleEventDispatcher.ConnectResult.PERMISSION_DENIED)
+                }
             }
         }
     }
@@ -260,6 +269,9 @@ class BleManager private constructor(private val activity: Activity) {
                     unityEventDispatcher.notifyResultForDiscoveryService(UnityBleEventDispatcher.DiscoverServiceResult.PERMISSION_DENIED)
                 }
                 PermissionService.PermissionResult.SomePermissionsDined -> {
+                    unityEventDispatcher.notifyResultForDiscoveryService(UnityBleEventDispatcher.DiscoverServiceResult.PERMISSION_DENIED)
+                }
+                PermissionService.PermissionResult.PermanentlyDenied -> {
                     unityEventDispatcher.notifyResultForDiscoveryService(UnityBleEventDispatcher.DiscoverServiceResult.PERMISSION_DENIED)
                 }
             }
@@ -298,6 +310,7 @@ class BleManager private constructor(private val activity: Activity) {
                 PermissionService.PermissionResult.ReadyForUse -> gatt.readCharacteristic(char)
                 PermissionService.PermissionResult.LocationServiceDisabled -> unityEventDispatcher.notifyOnRead(char, "", UnityBleEventDispatcher.ReadResult.PERMISSION_DENIED)
                 PermissionService.PermissionResult.SomePermissionsDined -> unityEventDispatcher.notifyOnRead(char, "", UnityBleEventDispatcher.ReadResult.PERMISSION_DENIED)
+                PermissionService.PermissionResult.PermanentlyDenied -> unityEventDispatcher.notifyOnRead(char, "", UnityBleEventDispatcher.ReadResult.PERMISSION_DENIED)
             }
         }
 
@@ -374,6 +387,7 @@ class BleManager private constructor(private val activity: Activity) {
                 }
                 PermissionService.PermissionResult.LocationServiceDisabled -> unityEventDispatcher.notifyOnWrite(from = characteristicUUID, result = UnityBleEventDispatcher.WriteResult.PERMISSION_DENIED)
                 PermissionService.PermissionResult.SomePermissionsDined -> unityEventDispatcher.notifyOnWrite(from = characteristicUUID, result = UnityBleEventDispatcher.WriteResult.PERMISSION_DENIED)
+                PermissionService.PermissionResult.PermanentlyDenied -> unityEventDispatcher.notifyOnWrite(from = characteristicUUID, result = UnityBleEventDispatcher.WriteResult.PERMISSION_DENIED)
             }
         }
 
@@ -472,6 +486,10 @@ class BleManager private constructor(private val activity: Activity) {
                     unityEventDispatcher.notifyOnSubscribe(from = char, value = "", result = UnityBleEventDispatcher.SubscribeResult.PERMISSION_DENIED)
                     notifyDescriptorWriteNotIssued(characteristicUUID)
                 }
+                PermissionService.PermissionResult.PermanentlyDenied -> {
+                    unityEventDispatcher.notifyOnSubscribe(from = char, value = "", result = UnityBleEventDispatcher.SubscribeResult.PERMISSION_DENIED)
+                    notifyDescriptorWriteNotIssued(characteristicUUID)
+                }
             }
         }
 
@@ -524,6 +542,9 @@ class BleManager private constructor(private val activity: Activity) {
                     unityEventDispatcher.notifyOnUnSubscribe(from = char, result = UnityBleEventDispatcher.SubscribeResult.PERMISSION_DENIED)
                 }
                 PermissionService.PermissionResult.SomePermissionsDined -> {
+                    unityEventDispatcher.notifyOnUnSubscribe(from = char, result = UnityBleEventDispatcher.SubscribeResult.PERMISSION_DENIED)
+                }
+                PermissionService.PermissionResult.PermanentlyDenied -> {
                     unityEventDispatcher.notifyOnUnSubscribe(from = char, result = UnityBleEventDispatcher.SubscribeResult.PERMISSION_DENIED)
                 }
             }
