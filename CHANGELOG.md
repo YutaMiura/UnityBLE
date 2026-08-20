@@ -2,6 +2,18 @@
 
 All notable changes to this package will be documented in this file.
 
+## [0.3.4]
+### Fixed
+- Android: a BLE scan could never start on Android 9 (API 28) and below. `requiredPermissionsForScan`
+  asks for `ACCESS_COARSE_LOCATION` there — the permission the platform requires for a scan before
+  API 29 — but `UnityBLE.aar` declared only `ACCESS_FINE_LOCATION`. A permission the manifest does
+  not declare is refused outright: `requestPermissions` returns `DENIED` for it without showing a
+  dialog, so `ensurePermissionsWithResult` reported `SomePermissionsDined`, `startBleScan` answered
+  `PERMISSION_DENIED`, and the caller saw `BleUnAuthorized` with no way for the user to grant
+  anything. `ACCESS_COARSE_LOCATION` is now declared, capped at `maxSdkVersion="28"` to match the
+  branch that asks for it. Apps that happened to work on those releases were relying on another
+  library in the merge to declare the permission for them.
+
 ## [0.3.3]
 ### Added
 - `IBleCharacteristic.SubscribeAsync(CancellationToken)` — subscribes and completes once
