@@ -17,7 +17,15 @@
         android:name="android.permission.BLUETOOTH_ADMIN"
         android:maxSdkVersion="30" />
 
-    <!-- For Android10-11, Location permission required for BLE scanning -->
+    <!--
+      Location permission for BLE scanning below Android 12 (API 31). Both declarations are
+      required because PermissionService.requiredPermissionsForScan() asks for
+      ACCESS_FINE_LOCATION on API 29-30 and ACCESS_COARSE_LOCATION on API 24-28, and a
+      permission this library never declares is denied outright: requestPermissions returns
+      DENIED for it without showing a dialog, so the scan can never start. Keep the
+      maxSdkVersion caps aligned with those branches.
+    -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="28"/>
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30"/>
 
     <!-- Declare that the app uses Bluetooth LE -->
